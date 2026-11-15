@@ -32,3 +32,8 @@ frontend/dist/
 # Logs
 # ==========================
 *.log
+# ==========================
+# Private notes (keep local)
+# ==========================
+PROJECT_REVIEW.md
+NovaChat_Project_Review.pdf
