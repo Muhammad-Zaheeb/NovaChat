@@ -21,19 +21,35 @@ export function Input({ className = '', ...p }: InputHTMLAttributes<HTMLInputEle
   )
 }
 
-export function Avatar({ name, size = 40 }: { name: string; size?: number }) {
+export function Avatar({
+  name,
+  size = 40,
+  online,
+}: {
+  name: string
+  size?: number
+  online?: boolean
+}) {
   const hue = [...name].reduce((a, c) => a + c.charCodeAt(0), 0) % 360
   return (
-    <div
-      className="flex shrink-0 items-center justify-center rounded-full font-semibold text-white"
-      style={{
-        width: size,
-        height: size,
-        background: `hsl(${hue} 55% 48%)`,
-        fontSize: size / 2.4,
-      }}
-    >
-      {name.slice(0, 1).toUpperCase()}
+    <div className="relative shrink-0">
+      <div
+        className="flex shrink-0 items-center justify-center rounded-full font-semibold text-white"
+        style={{
+          width: size,
+          height: size,
+          background: `hsl(${hue} 55% 48%)`,
+          fontSize: size / 2.4,
+        }}
+      >
+        {name.slice(0, 1).toUpperCase()}
+      </div>
+      {online && (
+        <span
+          title="Online"
+          className="absolute right-0 bottom-0 h-3 w-3 rounded-full border-2 border-white bg-green-500 dark:border-slate-900"
+        />
+      )}
     </div>
   )
 }

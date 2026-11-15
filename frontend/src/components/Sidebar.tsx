@@ -18,6 +18,7 @@ export default function Sidebar({
   const logout = useAuth((s) => s.logout)
   const { conversations, details, listLoaded, loadConversations } = useChat()
   const typing = useLive((s) => s.typing)
+  const online = useLive((s) => s.online)
   const [dialog, setDialog] = useState<'chat' | 'group' | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -78,7 +79,16 @@ export default function Sidebar({
                   `flex items-center gap-3 px-4 py-3 ${isActive ? 'bg-brand-50 dark:bg-slate-800' : 'hover:bg-slate-100 dark:hover:bg-slate-800/60'}`
                 }
               >
-                <Avatar name={title} />
+                <Avatar
+                  name={title}
+                  online={
+                    c.type === 'direct' &&
+                    !!online[
+                      details[c.id]?.members.find((m) => m.user.id !== me.id)?.user.id ??
+                        -1
+                    ]
+                  }
+                />
                 <div className="min-w-0 flex-1">
                   <div className="flex justify-between gap-2">
                     <span className="truncate font-medium">{title}</span>

@@ -8,6 +8,9 @@ interface LiveState {
   /** conversation -> user id -> newest message id they have read (this session) */
   reads: Record<number, Record<number, number>>
   setRead: (conv: number, user: number, messageId: number) => void
+  /** user id -> online */
+  online: Record<number, boolean>
+  setOnline: (m: Record<number, boolean>) => void
   setTyping: (conv: number, user: number, on: boolean) => void
 }
 
@@ -15,6 +18,8 @@ const timers = new Map<string, ReturnType<typeof setTimeout>>()
 
 export const useLive = create<LiveState>((set, get) => ({
   typing: {},
+  online: {},
+  setOnline: (m) => set((s) => ({ online: { ...s.online, ...m } })),
   reads: {},
   setRead: (conv, user, messageId) =>
     set((s) => ({

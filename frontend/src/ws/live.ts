@@ -1,18 +1,49 @@
 import { useAuth } from '../store/auth'
 import { useLive } from '../store/live'
 import { useChat } from '../store/chat'
+import { usersApi } from '../api'
 import * as socket from './socket'
 
 /** Wires socket events into the stores. Returns a cleanup function. */
 export function startLive(): () => void {
   const offs: Array<() => void> = []
+  const known = new Set<number>()
+
+  // Ask the server who is online among people in my conversations (all of them
+  // after a reconnect, since presence events were missed; otherwise just new ones).
+  const syncPresence = (all = false) => {
+    const me = useAuth.getState().user?.id
+    const ids = new Set<number>()
+    for (const d of Object.values(useChat.getState().details))
+      for (const m of d.members)
+        if (m.user.id !== me && (all || !known.has(m.user.id))) ids.add(m.user.id)
+    if (!ids.size) return
+    ids.forEach((i) => known.add(i))
+    usersApi
+      .online([...ids])
+      .then((on) =>
+        useLive
+          .getState()
+          .setOnline(Object.fromEntries([...ids].map((i) => [i, on.includes(i)]))),
+      )
+      .catch(() => ids.forEach((i) => known.delete(i)))
+  }
+  offs.push(useChat.subscribe((s, p) => s.details !== p.details && syncPresence()))
+  offs.push(
+    socket.on('presence', (e) => {
+      known.add(e.user_id)
+      useLive.getState().setOnline({ [e.user_id]: e.online })
+    }),
+  )
 
   // After a reconnect, anything sent during the gap is missed: refetch it.
   offs.push(
     socket.onOpen((isReconnect) => {
       if (!isReconnect) return
       const { loadConversations, openConversation, activeId } = useChat.getState()
-      void loadConversations().catch(() => {})
+      void loadConversations()
+        .then(() => syncPresence(true))
+        .catch(() => {})
       if (activeId) void openConversation(activeId).catch(() => {})
     }),
   )

@@ -36,6 +36,7 @@ function Conversation({ id }: { id: number }) {
   const me = useAuth((s) => s.user)!
   const conv = useChat((s) => s.conversations[id])
   const detail = useChat((s) => s.details[id])
+  const online = useLive((s) => s.online)
   const typingIds = useLive((s) => s.typing[id])
   const lastId = useChat((s) => s.threads[id]?.items.at(-1)?.id)
   const { openConversation, markRead, listLoaded, setActive } = useChat()
@@ -76,6 +77,11 @@ function Conversation({ id }: { id: number }) {
     )
 
   const title = conversationTitle(conv, detail, me.id)
+  const otherId =
+    conv.type === 'direct'
+      ? detail?.members.find((m) => m.user.id !== me.id)?.user.id
+      : undefined
+  const otherOnline = otherId !== undefined && !!online[otherId]
   const names = Object.fromEntries(
     (detail?.members ?? []).map((m) => [m.user.id, m.user.username]),
   )
@@ -85,15 +91,24 @@ function Conversation({ id }: { id: number }) {
         <Link to="/" className="text-slate-500 md:hidden" aria-label="Back">
           ←
         </Link>
-        <Avatar name={title} size={36} />
+        <Avatar name={title} size={36} online={otherOnline} />
         <div>
           <div className="font-semibold">{title}</div>
           {typingText(typingIds, names) ? (
             <div className="text-xs text-brand-600">{typingText(typingIds, names)}</div>
-          ) : (
-            conv.type === 'group' &&
+          ) : conv.type === 'group' ? (
             detail && (
-              <div className="text-xs text-slate-500">{detail.members.length} members</div>
+              <div className="text-xs text-slate-500">
+                {detail.members.length} members
+              </div>
+            )
+          ) : (
+            otherId !== undefined && (
+              <div
+                className={`text-xs ${otherOnline ? 'text-green-600' : 'text-slate-500'}`}
+              >
+                {otherOnline ? 'online' : 'offline'}
+              </div>
             )
           )}
         </div>
