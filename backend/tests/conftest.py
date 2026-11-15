@@ -4,6 +4,7 @@ import os
 os.environ["DATABASE_URL"] = os.environ.get(
     "TEST_DATABASE_URL", "postgresql+asyncpg://apple@localhost:5432/novachat_test"
 )
+os.environ["EMAIL_BACKEND"] = "memory"
 os.environ.setdefault("SECRET_KEY", "test-secret-key-for-pytest-only-0123456789")
 
 import pytest  # noqa: E402
@@ -33,12 +34,17 @@ async def _clean():
     yield
     async with engine.begin() as conn:
         await conn.execute(
-            text("TRUNCATE users, conversations, conversation_members, messages RESTART IDENTITY CASCADE")
+            text("TRUNCATE users, email_verification_codes, conversations, conversation_members, messages RESTART IDENTITY CASCADE")
         )
 
 
 def make_client() -> AsyncClient:
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+
+
+def last_code(email: str) -> str:
+    from app.core import email as mailer
+    return [m["code"] for m in mailer.outbox if m["to"] == email][-1]
 
 
 async def register_login(name: str) -> AsyncClient:
@@ -50,6 +56,10 @@ async def register_login(name: str) -> AsyncClient:
     )
     assert r.status_code == 201, r.text
     c.user_id = r.json()["id"]
+    r = await c.post(
+        "/auth/verify-email", json={"email": f"{name}@example.com", "code": last_code(f"{name}@example.com")}
+    )
+    assert r.status_code == 200, r.text
     r = await c.post("/auth/login", json={"email": f"{name}@example.com", "password": "password123"})
     assert r.status_code == 200, r.text
     return c
