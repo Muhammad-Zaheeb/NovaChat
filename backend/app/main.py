@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.routers import auth, conversations, health, users
+from app.ws.router import router as ws_router
 
 app = FastAPI(title="NovaChat")
 
@@ -18,6 +19,7 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(conversations.router)
 app.include_router(users.router)
+app.include_router(ws_router)
 
 
 @app.get("/")

@@ -9,10 +9,8 @@ from app.models.user import User
 COOKIE_NAME = "access_token"
 
 
-async def get_current_user(
-    request: Request, db: AsyncSession = Depends(get_db)
-) -> User:
-    token = request.cookies.get(COOKIE_NAME)
+async def user_from_token(db: AsyncSession, token: str | None) -> User:
+    """Shared by REST (cookie) and WebSocket (handshake cookie) auth."""
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
@@ -23,3 +21,9 @@ async def get_current_user(
     if user is None:
         raise HTTPException(status_code=401, detail="User not found")
     return user
+
+
+async def get_current_user(
+    request: Request, db: AsyncSession = Depends(get_db)
+) -> User:
+    return await user_from_token(db, request.cookies.get(COOKIE_NAME))
