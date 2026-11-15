@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios'
+import { toast } from '../store/toast'
 
 export const api = axios.create({ baseURL: '/api', withCredentials: true })
 
@@ -14,6 +15,9 @@ api.interceptors.response.use(
     if (err.response?.status === 401 && !url.startsWith('/auth/')) {
       onUnauthorized()
     }
+    const status = err.response?.status
+    if (!err.response && !axios.isCancel(err)) toast('Cannot reach the server')
+    else if (status && status >= 500) toast('Server error. Please try again.')
     return Promise.reject(err)
   },
 )

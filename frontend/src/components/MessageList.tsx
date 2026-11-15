@@ -3,6 +3,7 @@ import type { Message } from '../api'
 import { clockTime, dayLabel } from '../lib'
 import { useChat } from '../store/chat'
 import { useLive } from '../store/live'
+import { Spinner } from './ui'
 
 interface Props {
   convId: number
@@ -73,7 +74,21 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
   }
 
   if (!thread?.loaded)
-    return <div className="flex-1 p-6 text-center text-slate-500">Loading messages…</div>
+    return (
+      <div
+        aria-busy="true"
+        aria-label="Loading messages"
+        className="flex flex-1 animate-pulse flex-col gap-3 overflow-hidden p-4"
+      >
+        {[60, 40, 70, 30, 55].map((w, i) => (
+          <div
+            key={i}
+            style={{ width: `${w}%` }}
+            className={`h-9 rounded-2xl bg-slate-200 dark:bg-slate-800 ${i % 2 ? 'self-end' : ''}`}
+          />
+        ))}
+      </div>
+    )
   if (items.length === 0 && !pending?.length)
     return (
       <div className="flex flex-1 items-center justify-center text-slate-500">
@@ -126,7 +141,7 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
         )}
         <div
           title={new Date(m.created_at).toLocaleString()}
-          className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm break-words whitespace-pre-wrap ${
+          className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-3 py-2 text-sm break-words whitespace-pre-wrap ${
             mine
               ? 'bg-brand-600 text-white'
               : 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100'
@@ -152,7 +167,7 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
     rows.push(
       <div key={p.client_id} className="mt-3 flex flex-col items-end">
         <div
-          className={`max-w-[75%] rounded-2xl bg-brand-600 px-3 py-2 text-sm break-words whitespace-pre-wrap text-white ${p.status === 'sending' ? 'opacity-60' : 'ring-2 ring-red-500'}`}
+          className={`max-w-[85%] md:max-w-[75%] rounded-2xl bg-brand-600 px-3 py-2 text-sm break-words whitespace-pre-wrap text-white ${p.status === 'sending' ? 'opacity-60' : 'ring-2 ring-red-500'}`}
         >
           {p.content}
         </div>
@@ -184,11 +199,19 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
       <div ref={ref} onScroll={onScroll} className="flex-1 overflow-y-auto px-4 py-2">
-        {thread.hasMore && (
-          <div className="py-2 text-center text-xs text-slate-500">
-            {loadingOlder ? 'Loading older messages…' : 'Scroll up for older messages'}
-          </div>
-        )}
+        <div className="flex h-8 items-center justify-center gap-2 text-xs text-slate-500">
+          {thread.hasMore ? (
+            loadingOlder ? (
+              <>
+                <Spinner label="Loading older messages" /> Loading older messages…
+              </>
+            ) : (
+              'Scroll up for older messages'
+            )
+          ) : (
+            items.length > 0 && 'You’ve reached the beginning'
+          )}
+        </div>
         {rows}
       </div>
       {missed > 0 && (

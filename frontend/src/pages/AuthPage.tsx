@@ -57,7 +57,7 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
       <form
         onSubmit={submit}
         noValidate
-        className="w-full max-w-sm space-y-4 rounded-2xl border border-slate-200 bg-white p-8 shadow-xl dark:border-slate-800 dark:bg-slate-900"
+        className="w-full max-w-sm space-y-4 rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-xl dark:border-slate-800 dark:bg-slate-900"
       >
         <div>
           <h1 className="text-2xl font-bold text-brand-600">NovaChat</h1>
@@ -102,7 +102,7 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
           {isRegister ? 'Already have an account? ' : 'New here? '}
           <Link
             to={isRegister ? '/login' : '/register'}
-            className="font-medium text-brand-600 hover:underline"
+            className="inline-block py-2 font-medium text-brand-600 hover:underline"
           >
             {isRegister ? 'Sign in' : 'Create an account'}
           </Link>

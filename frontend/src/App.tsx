@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute'
 import AuthPage from './pages/AuthPage'
+import NotFound from './components/NotFound'
 import ChatPage from './pages/ChatPage'
 import { useAuth } from './store/auth'
 
@@ -20,6 +21,14 @@ export default function App() {
           <Route path="/" element={<ChatPage />} />
           <Route path="/c/:id" element={<ChatPage />} />
         </Route>
+        <Route
+          path="*"
+          element={
+            <div className="flex h-full">
+              <NotFound />
+            </div>
+          }
+        />
       </Routes>
     </BrowserRouter>
   )

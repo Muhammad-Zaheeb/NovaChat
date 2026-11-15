@@ -7,6 +7,22 @@ import { typingText, useLive } from '../store/live'
 import { NewChatDialog, NewGroupDialog } from './NewChatDialogs'
 import { Avatar, Button } from './ui'
 
+function SidebarSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Loading conversations">
+      {[0, 1, 2, 3, 4].map((i) => (
+        <div key={i} className="flex animate-pulse items-center gap-3 px-4 py-3">
+          <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-800" />
+          <div className="flex-1 space-y-2">
+            <div className="h-3 w-1/3 rounded bg-slate-200 dark:bg-slate-800" />
+            <div className="h-3 w-2/3 rounded bg-slate-200 dark:bg-slate-800" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function Sidebar({
   theme,
   toggleTheme,
@@ -61,13 +77,34 @@ export default function Sidebar({
       </div>
       <nav className="flex-1 overflow-y-auto">
         {failed ? (
-          <p className="p-4 text-sm text-red-500">Could not load conversations</p>
+          <div className="p-4 text-sm">
+            <p className="text-red-600 dark:text-red-400">Could not load conversations</p>
+            <button
+              onClick={() => {
+                setFailed(false)
+                loadConversations().catch(() => setFailed(true))
+              }}
+              className="mt-2 h-10 font-medium text-brand-600 underline"
+            >
+              Retry
+            </button>
+          </div>
         ) : !listLoaded ? (
-          <p className="p-4 text-sm text-slate-500">Loading…</p>
+          <SidebarSkeleton />
         ) : sorted.length === 0 ? (
-          <p className="p-4 text-sm text-slate-500">
-            No conversations yet. Start a new chat!
-          </p>
+          <div className="p-6 text-center text-sm text-slate-600 dark:text-slate-400">
+            <p className="font-medium">No chats yet</p>
+            <p className="mt-1">
+              Start one with{' '}
+              <button
+                onClick={() => setDialog('chat')}
+                className="font-medium text-brand-600 underline"
+              >
+                New chat
+              </button>
+              .
+            </p>
+          </div>
         ) : (
           sorted.map((c) => {
             const title = conversationTitle(c, details[c.id], me.id)

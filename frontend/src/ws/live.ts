@@ -2,6 +2,7 @@ import { useAuth } from '../store/auth'
 import { useLive } from '../store/live'
 import { useChat } from '../store/chat'
 import { usersApi } from '../api'
+import { toast } from '../store/toast'
 import * as socket from './socket'
 
 /** Wires socket events into the stores. Returns a cleanup function. */
@@ -82,6 +83,9 @@ export function startLive(): () => void {
       })
     }),
   )
+  offs.push(socket.on('error', (e) => toast(e.detail || 'Realtime error')))
+  offs.push(socket.onClose(() => toast('Connection lost. Reconnecting…')))
+  offs.push(socket.onOpen((re) => re && toast('Back online', 'info')))
   // Sends still waiting for an echo cannot be confirmed once the socket drops.
   offs.push(
     socket.onClose(() => {

@@ -246,7 +246,15 @@ export const useChat = create<ChatState>((set, get) => ({
     await chatApi.read(id, last.id)
   },
 
-  reset: () => set({ conversations: {}, details: {}, threads: {}, pending: {}, listLoaded: false, activeId: null }),
+  reset: () =>
+    set({
+      conversations: {},
+      details: {},
+      threads: {},
+      pending: {},
+      listLoaded: false,
+      activeId: null,
+    }),
 }))
 
 /** Display name for a conversation from the viewer's perspective. */
