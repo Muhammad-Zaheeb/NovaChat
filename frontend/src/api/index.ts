@@ -31,6 +31,10 @@ export const chatApi = {
     api
       .post<Conversation>('/conversations/group', { name, member_ids })
       .then((r) => r.data),
+  addMember: (id: number, user_id: number) =>
+    api.post(`/conversations/${id}/members`, { user_id }),
+  removeMember: (id: number, user_id: number) =>
+    api.delete(`/conversations/${id}/members/${user_id}`),
   /** Newest first. Pass `before` (a message id) to page backwards. */
   messages: (id: number, before?: number, limit = 50) =>
     api

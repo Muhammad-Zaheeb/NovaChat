@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import GroupInfoDialog from '../components/GroupInfoDialog'
 import Composer from '../components/Composer'
 import MessageList from '../components/MessageList'
 import Sidebar from '../components/Sidebar'
@@ -41,6 +42,7 @@ function Conversation({ id }: { id: number }) {
   const lastId = useChat((s) => s.threads[id]?.items.at(-1)?.id)
   const { openConversation, markRead, listLoaded, setActive } = useChat()
   const [error, setError] = useState(false)
+  const [info, setInfo] = useState(false)
 
   useEffect(() => {
     setActive(id)
@@ -92,8 +94,8 @@ function Conversation({ id }: { id: number }) {
           ←
         </Link>
         <Avatar name={title} size={36} online={otherOnline} />
-        <div>
-          <div className="font-semibold">{title}</div>
+        <div className="min-w-0">
+          <div className="truncate font-semibold">{title}</div>
           {typingText(typingIds, names) ? (
             <div className="text-xs text-brand-600">{typingText(typingIds, names)}</div>
           ) : conv.type === 'group' ? (
@@ -112,7 +114,17 @@ function Conversation({ id }: { id: number }) {
             )
           )}
         </div>
+        {conv.type === 'group' && (
+          <button
+            onClick={() => setInfo(true)}
+            aria-label="Group info"
+            className="ml-auto h-10 rounded-lg px-3 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            Info
+          </button>
+        )}
       </header>
+      {info && <GroupInfoDialog convId={id} onClose={() => setInfo(false)} />}
       <MessageList
         convId={id}
         meId={me.id}

@@ -33,6 +33,7 @@ interface ChatState {
   loadConversations: () => Promise<void>
   loadDetail: (id: number) => Promise<void>
   upsertConversation: (c: Conversation) => void
+  removeConversation: (id: number) => void
   openConversation: (id: number) => Promise<void>
   loadOlder: (id: number) => Promise<number>
   send: (id: number, content: string) => Promise<void>
@@ -84,6 +85,15 @@ export const useChat = create<ChatState>((set, get) => ({
     set((s) => ({ conversations: { ...s.conversations, [c.id]: c } }))
     if (!get().details[c.id]) void get().loadDetail(c.id)
   },
+
+  removeConversation: (id) =>
+    set((s) => {
+      const { [id]: _c, ...conversations } = s.conversations
+      const { [id]: _d, ...details } = s.details
+      const { [id]: _t, ...threads } = s.threads
+      const { [id]: _p, ...pending } = s.pending
+      return { conversations, details, threads, pending }
+    }),
 
   openConversation: async (id) => {
     if (!get().details[id]) await get().loadDetail(id)
