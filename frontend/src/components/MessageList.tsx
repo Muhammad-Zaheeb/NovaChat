@@ -163,13 +163,13 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
             <>
               <span className="text-red-500">Failed to send</span>{' '}
               <button
-                className="font-medium text-brand-600 underline"
+                className="inline-flex h-8 items-center px-1 font-medium text-brand-600 underline"
                 onClick={() => sendLive(convId, p.content, p.client_id)}
               >
                 Retry
               </button>{' '}
               <button
-                className="underline"
+                className="inline-flex h-8 items-center px-1 underline"
                 onClick={() => useChat.getState().dropPending(convId, p.client_id)}
               >
                 Dismiss

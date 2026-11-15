@@ -40,7 +40,11 @@ export default function Sidebar({
     <aside className="flex h-full w-full flex-col border-r border-slate-200 bg-slate-50 md:w-80 dark:border-slate-800 dark:bg-slate-900">
       <div className="flex items-center justify-between p-4">
         <h1 className="text-xl font-bold text-brand-600">NovaChat</h1>
-        <button onClick={toggleTheme} className="text-lg" aria-label="Toggle theme">
+        <button
+          onClick={toggleTheme}
+          className="flex h-10 w-10 items-center justify-center rounded-lg text-lg hover:bg-slate-200 dark:hover:bg-slate-800"
+          aria-label="Toggle theme"
+        >
           {theme === 'dark' ? '☀️' : '🌙'}
         </button>
       </div>
@@ -125,7 +129,7 @@ export default function Sidebar({
         <span className="flex-1 truncate text-sm font-medium">{me.username}</span>
         <button
           onClick={() => void logout()}
-          className="text-sm text-slate-500 hover:text-red-500"
+          className="h-10 rounded-lg px-3 text-sm text-slate-600 hover:text-red-600 dark:text-slate-400"
         >
           Log out
         </button>

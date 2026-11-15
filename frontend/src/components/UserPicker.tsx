@@ -51,7 +51,7 @@ export default function UserPicker({
             <li key={u.id}>
               <button
                 onClick={() => onPick(u)}
-                className="flex w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="flex min-h-12 w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <Avatar name={u.username} size={32} />
                 <span className="flex-1 text-sm">{u.username}</span>

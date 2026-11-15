@@ -7,7 +7,7 @@ export function Button({
   return (
     <button
       {...p}
-      className={`rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      className={`min-h-10 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
     />
   )
 }
@@ -16,7 +16,7 @@ export function Input({ className = '', ...p }: InputHTMLAttributes<HTMLInputEle
   return (
     <input
       {...p}
-      className={`w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-900 ${className}`}
+      className={`w-full min-h-10 rounded-lg border border-slate-300 bg-white px-3 py-2 text-base md:text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-900 ${className}`}
     />
   )
 }

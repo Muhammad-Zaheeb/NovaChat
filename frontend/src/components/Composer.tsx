@@ -54,7 +54,7 @@ export default function Composer({ convId }: { convId: number }) {
   }
 
   return (
-    <div className="border-t border-slate-200 p-3 dark:border-slate-800">
+    <div className="border-t border-slate-200 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-slate-800">
       <div className="flex items-end gap-2">
         <textarea
           rows={1}
@@ -62,13 +62,13 @@ export default function Composer({ convId }: { convId: number }) {
           maxLength={MAX}
           onChange={(e) => onType(e.target.value)}
           onKeyDown={onKey}
-          placeholder="Type a message…  (Enter to send, Shift+Enter for new line)"
-          className="max-h-40 min-h-[40px] flex-1 resize-none rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none [field-sizing:content] focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-900"
+          placeholder="Type a message…"
+          className="max-h-40 min-h-[40px] flex-1 resize-none rounded-xl border border-slate-300 bg-white px-3 py-2 text-base outline-none md:text-sm [field-sizing:content] focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-900"
         />
         <button
           onClick={() => submit()}
           disabled={!text.trim()}
-          className="h-10 rounded-xl bg-brand-600 px-4 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+          className="h-10 min-w-16 rounded-xl bg-brand-600 px-4 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
         >
           Send
         </button>
