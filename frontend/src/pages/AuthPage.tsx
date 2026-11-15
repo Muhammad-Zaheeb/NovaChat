@@ -60,8 +60,10 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
         className="w-full max-w-sm space-y-4 rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-xl dark:border-slate-800 dark:bg-slate-900"
       >
         <div>
-          <h1 className="text-2xl font-bold text-brand-600">NovaChat</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-bold text-brand-600 dark:text-indigo-400">
+            NovaChat
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             {isRegister ? 'Create your account' : 'Sign in to continue'}
           </p>
         </div>
@@ -98,11 +100,11 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
         <Button type="submit" disabled={busy} className="w-full">
           {busy ? 'Please wait…' : isRegister ? 'Create account' : 'Sign in'}
         </Button>
-        <p className="text-center text-sm text-slate-500">
+        <p className="text-center text-sm text-slate-500 dark:text-slate-400">
           {isRegister ? 'Already have an account? ' : 'New here? '}
           <Link
             to={isRegister ? '/login' : '/register'}
-            className="inline-block py-2 font-medium text-brand-600 hover:underline"
+            className="inline-block py-2 font-medium text-brand-600 dark:text-indigo-400 hover:underline"
           >
             {isRegister ? 'Sign in' : 'Create an account'}
           </Link>

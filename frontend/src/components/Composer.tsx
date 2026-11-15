@@ -57,6 +57,7 @@ export default function Composer({ convId }: { convId: number }) {
     <div className="border-t border-slate-200 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-slate-800">
       <div className="flex items-end gap-2">
         <textarea
+          aria-label="Message"
           rows={1}
           value={text}
           maxLength={MAX}
@@ -74,7 +75,7 @@ export default function Composer({ convId }: { convId: number }) {
         </button>
       </div>
       {text.length > MAX - 200 && (
-        <p className="mt-1 text-right text-xs text-slate-500">
+        <p className="mt-1 text-right text-xs text-slate-500 dark:text-slate-400">
           {text.length}/{MAX}
         </p>
       )}

@@ -3,6 +3,7 @@ import type { Message } from '../api'
 import { clockTime, dayLabel } from '../lib'
 import { useChat } from '../store/chat'
 import { useLive } from '../store/live'
+import Linkify from './Linkify'
 import { Spinner } from './ui'
 
 interface Props {
@@ -91,7 +92,7 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
     )
   if (items.length === 0 && !pending?.length)
     return (
-      <div className="flex flex-1 items-center justify-center text-slate-500">
+      <div className="flex flex-1 items-center justify-center text-slate-500 dark:text-slate-400">
         No messages yet. Say hello 👋
       </div>
     )
@@ -125,7 +126,10 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
 
     if (newDay)
       rows.push(
-        <div key={`d${m.id}`} className="my-3 text-center text-xs text-slate-500">
+        <div
+          key={`d${m.id}`}
+          className="my-3 text-center text-xs text-slate-500 dark:text-slate-400"
+        >
           {dayLabel(m.created_at)}
         </div>,
       )
@@ -135,27 +139,27 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
         className={`flex flex-col ${mine ? 'items-end' : 'items-start'} ${sameAsBefore ? 'mt-0.5' : 'mt-3'}`}
       >
         {isGroup && !mine && !sameAsBefore && (
-          <span className="mb-0.5 ml-3 text-xs font-medium text-brand-600">
+          <span className="mb-0.5 ml-3 text-xs font-medium text-brand-600 dark:text-indigo-400">
             {names[m.sender_id] ?? 'Unknown'}
           </span>
         )}
         <div
           title={new Date(m.created_at).toLocaleString()}
-          className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-3 py-2 text-sm break-words whitespace-pre-wrap ${
+          className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-3 py-2 text-sm [overflow-wrap:anywhere] whitespace-pre-wrap ${
             mine
               ? 'bg-brand-600 text-white'
               : 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100'
           }`}
         >
-          {m.content}
+          <Linkify text={m.content} />
         </div>
         {seenMsg?.id === m.id && (
-          <span className="mx-2 mt-0.5 text-[11px] text-slate-500">
+          <span className="mx-2 mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
             {isGroup ? `Seen by ${seenCount}` : 'Seen'}
           </span>
         )}
         {!sameAsAfter && (
-          <span className="mx-2 mt-0.5 text-[11px] text-slate-500">
+          <span className="mx-2 mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
             {clockTime(m.created_at)}
           </span>
         )}
@@ -167,18 +171,18 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
     rows.push(
       <div key={p.client_id} className="mt-3 flex flex-col items-end">
         <div
-          className={`max-w-[85%] md:max-w-[75%] rounded-2xl bg-brand-600 px-3 py-2 text-sm break-words whitespace-pre-wrap text-white ${p.status === 'sending' ? 'opacity-60' : 'ring-2 ring-red-500'}`}
+          className={`max-w-[85%] md:max-w-[75%] rounded-2xl bg-brand-600 px-3 py-2 text-sm [overflow-wrap:anywhere] whitespace-pre-wrap text-white ${p.status === 'sending' ? 'opacity-60' : 'ring-2 ring-red-500'}`}
         >
-          {p.content}
+          <Linkify text={p.content} />
         </div>
-        <span className="mx-2 mt-0.5 text-[11px] text-slate-500">
+        <span className="mx-2 mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
           {p.status === 'sending' ? (
             'Sending…'
           ) : (
             <>
-              <span className="text-red-500">Failed to send</span>{' '}
+              <span className="text-red-600 dark:text-red-400">Failed to send</span>{' '}
               <button
-                className="inline-flex h-8 items-center px-1 font-medium text-brand-600 underline"
+                className="inline-flex h-8 items-center px-1 font-medium text-brand-600 dark:text-indigo-400 underline"
                 onClick={() => sendLive(convId, p.content, p.client_id)}
               >
                 Retry
@@ -199,7 +203,7 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
       <div ref={ref} onScroll={onScroll} className="flex-1 overflow-y-auto px-4 py-2">
-        <div className="flex h-8 items-center justify-center gap-2 text-xs text-slate-500">
+        <div className="flex h-8 items-center justify-center gap-2 text-xs text-slate-500 dark:text-slate-400">
           {thread.hasMore ? (
             loadingOlder ? (
               <>

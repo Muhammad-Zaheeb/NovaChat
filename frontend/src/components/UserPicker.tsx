@@ -34,6 +34,7 @@ export default function UserPicker({
   return (
     <div>
       <Input
+        aria-label="Search users"
         autoFocus
         placeholder="Search by username…"
         value={q}
@@ -41,11 +42,15 @@ export default function UserPicker({
       />
       <ul className="mt-2 max-h-56 overflow-y-auto">
         {short ? (
-          <li className="p-3 text-sm text-slate-500">Type at least 2 characters</li>
+          <li className="p-3 text-sm text-slate-500 dark:text-slate-400">
+            Type at least 2 characters
+          </li>
         ) : state === 'error' ? (
-          <li className="p-3 text-sm text-red-500">Search failed</li>
+          <li className="p-3 text-sm text-red-600 dark:text-red-400">Search failed</li>
         ) : results.length === 0 && state !== 'loading' ? (
-          <li className="p-3 text-sm text-slate-500">No users found</li>
+          <li className="p-3 text-sm text-slate-500 dark:text-slate-400">
+            No users found
+          </li>
         ) : (
           results.map((u) => (
             <li key={u.id}>
@@ -55,7 +60,9 @@ export default function UserPicker({
               >
                 <Avatar name={u.username} size={32} />
                 <span className="flex-1 text-sm">{u.username}</span>
-                {selectedIds.includes(u.id) && <span className="text-brand-600">✓</span>}
+                {selectedIds.includes(u.id) && (
+                  <span className="text-brand-600 dark:text-indigo-400">✓</span>
+                )}
               </button>
             </li>
           ))

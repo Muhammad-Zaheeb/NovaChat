@@ -24,7 +24,7 @@ export function NewChatDialog({ onClose }: { onClose: () => void }) {
   return (
     <Modal title="New chat" onClose={onClose}>
       <UserPicker onPick={start} />
-      {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
     </Modal>
   )
 }
@@ -83,7 +83,7 @@ export function NewGroupDialog({ onClose }: { onClose: () => void }) {
           </div>
         )}
         <UserPicker onPick={toggle} selectedIds={members.map((m) => m.id)} />
-        {error && <p className="text-sm text-red-500">{error}</p>}
+        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
         <Button onClick={create} disabled={busy} className="w-full">
           {busy ? 'Creating…' : 'Create group'}
         </Button>

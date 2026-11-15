@@ -138,7 +138,7 @@ export default function GroupInfoDialog({
           <UserPicker onPick={add} selectedIds={members.map((m) => m.user.id)} />
           <button
             onClick={() => setAdding(false)}
-            className="mt-2 h-10 text-sm text-slate-500 underline"
+            className="mt-2 h-10 text-sm text-slate-500 dark:text-slate-400 underline"
           >
             Cancel
           </button>

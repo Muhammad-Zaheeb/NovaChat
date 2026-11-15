@@ -55,7 +55,9 @@ export default function Sidebar({
   return (
     <aside className="flex h-full w-full flex-col border-r border-slate-200 bg-slate-50 md:w-80 dark:border-slate-800 dark:bg-slate-900">
       <div className="flex items-center justify-between p-4">
-        <h1 className="text-xl font-bold text-brand-600">NovaChat</h1>
+        <h1 className="text-xl font-bold text-brand-600 dark:text-indigo-400">
+          NovaChat
+        </h1>
         <button
           onClick={toggleTheme}
           className="flex h-10 w-10 items-center justify-center rounded-lg text-lg hover:bg-slate-200 dark:hover:bg-slate-800"
@@ -84,7 +86,7 @@ export default function Sidebar({
                 setFailed(false)
                 loadConversations().catch(() => setFailed(true))
               }}
-              className="mt-2 h-10 font-medium text-brand-600 underline"
+              className="mt-2 h-10 font-medium text-brand-600 dark:text-indigo-400 underline"
             >
               Retry
             </button>
@@ -98,7 +100,7 @@ export default function Sidebar({
               Start one with{' '}
               <button
                 onClick={() => setDialog('chat')}
-                className="font-medium text-brand-600 underline"
+                className="font-medium text-brand-600 dark:text-indigo-400 underline"
               >
                 New chat
               </button>
@@ -134,14 +136,14 @@ export default function Sidebar({
                   <div className="flex justify-between gap-2">
                     <span className="truncate font-medium">{title}</span>
                     {c.last_message && (
-                      <span className="shrink-0 text-xs text-slate-500">
+                      <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">
                         {formatTime(c.last_message.created_at)}
                       </span>
                     )}
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <span
-                      className={`truncate text-sm ${typingHint ? 'text-brand-600 italic' : 'text-slate-500'}`}
+                      className={`truncate text-sm ${typingHint ? 'text-brand-600 dark:text-indigo-400 italic' : 'text-slate-500 dark:text-slate-400'}`}
                     >
                       {typingHint ||
                         (c.last_message

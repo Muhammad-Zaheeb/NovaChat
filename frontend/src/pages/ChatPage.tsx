@@ -117,17 +117,19 @@ function Conversation({ id }: { id: number }) {
         <div className="min-w-0">
           <div className="truncate font-semibold">{title}</div>
           {typingText(typingIds, names) ? (
-            <div className="text-xs text-brand-600">{typingText(typingIds, names)}</div>
+            <div className="text-xs text-brand-600 dark:text-indigo-400">
+              {typingText(typingIds, names)}
+            </div>
           ) : conv.type === 'group' ? (
             detail && (
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-slate-500 dark:text-slate-400">
                 {detail.members.length} members
               </div>
             )
           ) : (
             otherId !== undefined && (
               <div
-                className={`text-xs ${otherOnline ? 'text-green-600' : 'text-slate-500'}`}
+                className={`text-xs ${otherOnline ? 'text-green-700 dark:text-green-400' : 'text-slate-500 dark:text-slate-400'}`}
               >
                 {otherOnline ? 'online' : 'offline'}
               </div>
@@ -162,6 +164,15 @@ export default function ChatPage() {
   const reset = useChat((s) => s.reset)
   useEffect(() => reset, [reset])
   useEffect(() => startLive(), [])
+  const unread = useChat((s) =>
+    Object.values(s.conversations).reduce((n, c) => n + c.unread_count, 0),
+  )
+  useEffect(() => {
+    document.title = unread > 0 ? `(${unread}) NovaChat` : 'NovaChat'
+    return () => {
+      document.title = 'NovaChat'
+    }
+  }, [unread])
   const down = useConn((s) => s.status === 'down')
 
   return (
@@ -182,7 +193,7 @@ export default function ChatPage() {
             <NotFound message="Conversation not found" />
           )
         ) : (
-          <div className="flex flex-1 items-center justify-center text-slate-500">
+          <div className="flex flex-1 items-center justify-center text-slate-500 dark:text-slate-400">
             Select a conversation or start a new chat
           </div>
         )}
