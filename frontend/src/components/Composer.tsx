@@ -19,7 +19,11 @@ export default function Composer({ convId }: { convId: number }) {
     lastStart.current = 0
   }
   // Leaving the chat counts as stopping.
-  useEffect(() => stopTyping, [])
+  const stopRef = useRef(stopTyping)
+  useEffect(() => {
+    stopRef.current = stopTyping
+  })
+  useEffect(() => () => stopRef.current(), [])
 
   const onType = (value: string) => {
     setText(value)

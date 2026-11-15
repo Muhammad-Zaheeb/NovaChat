@@ -5,6 +5,9 @@ const TYPING_TTL_MS = 5000
 interface LiveState {
   /** conversation -> user ids currently typing */
   typing: Record<number, number[]>
+  /** conversation -> user id -> newest message id they have read (this session) */
+  reads: Record<number, Record<number, number>>
+  setRead: (conv: number, user: number, messageId: number) => void
   setTyping: (conv: number, user: number, on: boolean) => void
 }
 
@@ -12,6 +15,17 @@ const timers = new Map<string, ReturnType<typeof setTimeout>>()
 
 export const useLive = create<LiveState>((set, get) => ({
   typing: {},
+  reads: {},
+  setRead: (conv, user, messageId) =>
+    set((s) => ({
+      reads: {
+        ...s.reads,
+        [conv]: {
+          ...s.reads[conv],
+          [user]: Math.max(s.reads[conv]?.[user] ?? 0, messageId),
+        },
+      },
+    })),
   setTyping: (conv, user, on) => {
     const key = `${conv}:${user}`
     clearTimeout(timers.get(key))

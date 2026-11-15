@@ -34,6 +34,23 @@ export function startLive(): () => void {
       useLive.getState().setTyping(m.conversation_id, m.sender_id, false),
     ),
   )
+  offs.push(
+    socket.on('message.read', (e) => {
+      const me = useAuth.getState().user
+      if (e.user_id !== me?.id) {
+        useLive.getState().setRead(e.conversation_id, e.user_id, e.message_id)
+        return
+      }
+      // I read it in another tab/device: clear the badge here too.
+      useChat.setState((s) => {
+        const c = s.conversations[e.conversation_id]
+        if (!c || !c.last_message || c.last_message.id > e.message_id) return s
+        return {
+          conversations: { ...s.conversations, [c.id]: { ...c, unread_count: 0 } },
+        }
+      })
+    }),
+  )
   // Sends still waiting for an echo cannot be confirmed once the socket drops.
   offs.push(
     socket.onClose(() => {

@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import type { Message } from '../api'
 import { clockTime, dayLabel } from '../lib'
 import { useChat } from '../store/chat'
+import { useLive } from '../store/live'
 
 interface Props {
   convId: number
@@ -17,6 +18,7 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
   const loadOlder = useChat((s) => s.loadOlder)
   const pending = useChat((s) => s.pending[convId])
   const sendLive = useChat((s) => s.sendLive)
+  const reads = useLive((s) => s.reads[convId])
   const [missed, setMissed] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
   const prev = useRef({ convId: -1, count: 0, firstId: 0, height: 0, pend: 0 })
@@ -79,6 +81,12 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
       </div>
     )
 
+  // Latest of my messages that someone else has read, and how many have.
+  const others = Object.entries(reads ?? {}).filter(([u]) => Number(u) !== meId)
+  const maxRead = Math.max(0, ...others.map(([, id]) => id))
+  const seenMsg = items.findLast((m) => m.sender_id === meId && m.id <= maxRead)
+  const seenCount = seenMsg ? others.filter(([, id]) => id >= seenMsg.id).length : 0
+
   const rows: React.ReactNode[] = []
   items.forEach((m: Message, i) => {
     const before = items[i - 1]
@@ -126,6 +134,11 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
         >
           {m.content}
         </div>
+        {seenMsg?.id === m.id && (
+          <span className="mx-2 mt-0.5 text-[11px] text-slate-500">
+            {isGroup ? `Seen by ${seenCount}` : 'Seen'}
+          </span>
+        )}
         {!sameAsAfter && (
           <span className="mx-2 mt-0.5 text-[11px] text-slate-500">
             {clockTime(m.created_at)}
