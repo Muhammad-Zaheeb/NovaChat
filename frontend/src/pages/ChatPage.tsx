@@ -53,6 +53,13 @@ function Conversation({ id }: { id: number }) {
     if (lastId) void markRead(id).catch(() => {})
   }, [id, lastId, markRead])
 
+  // Coming back to the tab counts as reading what arrived meanwhile.
+  useEffect(() => {
+    const onVis = () => void markRead(id).catch(() => {})
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [id, markRead])
+
   if (error || (listLoaded && !conv))
     return (
       <div className="flex flex-1 items-center justify-center text-slate-500">

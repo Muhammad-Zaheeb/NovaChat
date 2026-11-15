@@ -15,8 +15,11 @@ const GROUP_GAP_MS = 5 * 60 * 1000
 export default function MessageList({ convId, meId, isGroup, names }: Props) {
   const thread = useChat((s) => s.threads[convId])
   const loadOlder = useChat((s) => s.loadOlder)
+  const pending = useChat((s) => s.pending[convId])
+  const sendLive = useChat((s) => s.sendLive)
+  const [missed, setMissed] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
-  const prev = useRef({ convId: -1, count: 0, firstId: 0, height: 0 })
+  const prev = useRef({ convId: -1, count: 0, firstId: 0, height: 0, pend: 0 })
   const [loadingOlder, setLoadingOlder] = useState(false)
   const items = thread?.items ?? []
 
@@ -30,21 +33,33 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
       el.scrollTop = el.scrollHeight
     } else if (first < p.firstId && p.firstId !== 0) {
       el.scrollTop = el.scrollHeight - p.height + el.scrollTop
-    } else if (items.length > p.count) {
+    } else if (items.length > p.count || (pending?.length ?? 0) > p.pend) {
       const nearBottom = p.height - el.scrollTop - el.clientHeight < 150
-      const mine = items.at(-1)?.sender_id === meId
+      const mine = (pending?.length ?? 0) > p.pend || items.at(-1)?.sender_id === meId
       if (nearBottom || mine) el.scrollTop = el.scrollHeight
+      else if (items.length > p.count) {
+        const n = items.length - p.count
+        queueMicrotask(() => setMissed((c) => c + n))
+      }
     }
     prev.current = {
       convId,
       count: items.length,
       firstId: first,
       height: el.scrollHeight,
+      pend: pending?.length ?? 0,
     }
   })
 
+  const toBottom = () => {
+    const el = ref.current
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+    setMissed(0)
+  }
+
   const onScroll = async () => {
     const el = ref.current
+    if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 60) setMissed(0)
     if (!el || el.scrollTop > 80 || loadingOlder || !thread?.hasMore) return
     setLoadingOlder(true)
     prev.current.height = el.scrollHeight
@@ -57,7 +72,7 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
 
   if (!thread?.loaded)
     return <div className="flex-1 p-6 text-center text-slate-500">Loading messages…</div>
-  if (items.length === 0)
+  if (items.length === 0 && !pending?.length)
     return (
       <div className="flex flex-1 items-center justify-center text-slate-500">
         No messages yet. Say hello 👋
@@ -120,14 +135,57 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
     )
   })
 
-  return (
-    <div ref={ref} onScroll={onScroll} className="flex-1 overflow-y-auto px-4 py-2">
-      {thread.hasMore && (
-        <div className="py-2 text-center text-xs text-slate-500">
-          {loadingOlder ? 'Loading older messages…' : 'Scroll up for older messages'}
+  for (const p of pending ?? []) {
+    rows.push(
+      <div key={p.client_id} className="mt-3 flex flex-col items-end">
+        <div
+          className={`max-w-[75%] rounded-2xl bg-brand-600 px-3 py-2 text-sm break-words whitespace-pre-wrap text-white ${p.status === 'sending' ? 'opacity-60' : 'ring-2 ring-red-500'}`}
+        >
+          {p.content}
         </div>
+        <span className="mx-2 mt-0.5 text-[11px] text-slate-500">
+          {p.status === 'sending' ? (
+            'Sending…'
+          ) : (
+            <>
+              <span className="text-red-500">Failed to send</span>{' '}
+              <button
+                className="font-medium text-brand-600 underline"
+                onClick={() => sendLive(convId, p.content, p.client_id)}
+              >
+                Retry
+              </button>{' '}
+              <button
+                className="underline"
+                onClick={() => useChat.getState().dropPending(convId, p.client_id)}
+              >
+                Dismiss
+              </button>
+            </>
+          )}
+        </span>
+      </div>,
+    )
+  }
+
+  return (
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      <div ref={ref} onScroll={onScroll} className="flex-1 overflow-y-auto px-4 py-2">
+        {thread.hasMore && (
+          <div className="py-2 text-center text-xs text-slate-500">
+            {loadingOlder ? 'Loading older messages…' : 'Scroll up for older messages'}
+          </div>
+        )}
+        {rows}
+      </div>
+      {missed > 0 && (
+        <button
+          onClick={toBottom}
+          className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-brand-600 px-3 py-1 text-xs font-medium text-white shadow-lg"
+        >
+          New messages ↓
+        </button>
       )}
-      {rows}
     </div>
   )
 }

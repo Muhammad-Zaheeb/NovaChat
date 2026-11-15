@@ -1,7 +1,17 @@
 import { create } from 'zustand'
+import * as socket from '../ws/socket'
 import { chatApi, type Conversation, type ConversationDetail, type Message } from '../api'
 
 const PAGE = 50
+const ECHO_TIMEOUT_MS = 10_000
+
+export interface Pending {
+  client_id: string
+  conversation_id: number
+  content: string
+  created_at: string
+  status: 'sending' | 'failed'
+}
 
 interface Thread {
   /** ascending by id, deduped */
@@ -14,6 +24,7 @@ interface ChatState {
   conversations: Record<number, Conversation>
   details: Record<number, ConversationDetail>
   threads: Record<number, Thread>
+  pending: Record<number, Pending[]>
   listLoaded: boolean
   /** conversation currently open in the UI */
   activeId: number | null
@@ -25,6 +36,11 @@ interface ChatState {
   openConversation: (id: number) => Promise<void>
   loadOlder: (id: number) => Promise<number>
   send: (id: number, content: string) => Promise<void>
+  /** Optimistic send over the socket (REST fallback when it is down). */
+  sendLive: (id: number, content: string, retryOf?: string) => void
+  dropPending: (id: number, clientId: string) => void
+  /** Handle a `message.new` event. */
+  onMessageEvent: (m: Message & { client_id: string | null }, meId: number) => void
   markRead: (id: number) => Promise<void>
   /** Single entry point for new messages (REST now, WebSocket events in Part 3B). */
   receiveMessage: (m: Message, opts?: { own?: boolean; active?: boolean }) => void
@@ -43,6 +59,7 @@ export const useChat = create<ChatState>((set, get) => ({
   details: {},
   threads: {},
   listLoaded: false,
+  pending: {},
   activeId: null,
   setActive: (id) => set({ activeId: id }),
 
@@ -108,6 +125,70 @@ export const useChat = create<ChatState>((set, get) => ({
     get().receiveMessage(m, { own: true, active: true })
   },
 
+  sendLive: (id, content, retryOf) => {
+    const { dropPending } = get()
+    if (retryOf) dropPending(id, retryOf)
+    const client_id = crypto.randomUUID()
+    const setStatus = (status: Pending['status']) =>
+      set((s) => ({
+        pending: {
+          ...s.pending,
+          [id]: (s.pending[id] ?? []).map((p) =>
+            p.client_id === client_id && p.status === 'sending' ? { ...p, status } : p,
+          ),
+        },
+      }))
+    set((s) => ({
+      pending: {
+        ...s.pending,
+        [id]: [
+          ...(s.pending[id] ?? []),
+          {
+            client_id,
+            conversation_id: id,
+            content,
+            created_at: new Date().toISOString(),
+            status: 'sending',
+          },
+        ],
+      },
+    }))
+    if (socket.send('message.send', { conversation_id: id, content, client_id })) {
+      setTimeout(() => setStatus('failed'), ECHO_TIMEOUT_MS)
+    } else {
+      chatApi
+        .send(id, content)
+        .then((m) => {
+          get().dropPending(id, client_id)
+          get().receiveMessage(m, { own: true, active: true })
+        })
+        .catch(() => setStatus('failed'))
+    }
+  },
+
+  dropPending: (id, clientId) =>
+    set((s) => ({
+      pending: {
+        ...s.pending,
+        [id]: (s.pending[id] ?? []).filter((p) => p.client_id !== clientId),
+      },
+    })),
+
+  onMessageEvent: (m, meId) => {
+    const s = get()
+    if (m.client_id) s.dropPending(m.conversation_id, m.client_id)
+    if (!s.conversations[m.conversation_id]) {
+      // A conversation we have not seen (e.g. someone just added us).
+      void s.loadConversations().catch(() => {})
+      return
+    }
+    const visible = document.visibilityState === 'visible'
+    s.receiveMessage(m, {
+      own: m.sender_id === meId,
+      active: s.activeId === m.conversation_id && visible,
+    })
+  },
+
   receiveMessage: (m, opts = {}) => {
     set((s) => {
       const conv = s.conversations[m.conversation_id]
@@ -143,7 +224,7 @@ export const useChat = create<ChatState>((set, get) => ({
   markRead: async (id) => {
     const conv = get().conversations[id]
     const last = get().threads[id]?.items.at(-1)
-    if (!conv || !last) return
+    if (!conv || !last || document.visibilityState !== 'visible') return
     if (conv.unread_count > 0) {
       set((s) => ({
         conversations: {
@@ -155,7 +236,7 @@ export const useChat = create<ChatState>((set, get) => ({
     await chatApi.read(id, last.id)
   },
 
-  reset: () => set({ conversations: {}, details: {}, threads: {}, listLoaded: false, activeId: null }),
+  reset: () => set({ conversations: {}, details: {}, threads: {}, pending: {}, listLoaded: false, activeId: null }),
 }))
 
 /** Display name for a conversation from the viewer's perspective. */
