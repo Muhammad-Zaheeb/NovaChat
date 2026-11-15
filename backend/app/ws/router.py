@@ -5,8 +5,11 @@ from pydantic import ValidationError
 
 from app.core.config import settings
 from app.database.session import SessionLocal
+from app.models.user import User
 from app.dependencies import COOKIE_NAME, user_from_token
-from app.ws import events
+from app.services import chat
+from app.services.chat import ChatError
+from app.ws import events, notify
 from app.ws.manager import manager
 
 router = APIRouter()
@@ -51,7 +54,25 @@ async def _ping(ws: WebSocket, user_id: int, payload: dict) -> None:
     await ws.send_json(events.event(events.PONG))
 
 
-HANDLERS = {events.PING: _ping}
+async def _message_send(ws: WebSocket, user_id: int, payload: dict) -> None:
+    data = events.MessageSend.model_validate(payload)
+    async with SessionLocal() as db:  # fresh session per event
+        try:
+            me = await db.get(User, user_id)
+            msg = await chat.send_message(db, me, data.conversation_id, data.content)
+        except ChatError as e:
+            await ws.send_json(events.error(_code(e), e.detail))
+            return
+        await notify.publish_message(db, msg, data.client_id)
+
+
+def _code(e: ChatError) -> str:
+    return {404: "not_found", 403: "forbidden", 400: "bad_request", 409: "conflict"}.get(
+        e.status, "error"
+    )
+
+
+HANDLERS = {events.PING: _ping, events.MESSAGE_SEND: _message_send}
 
 
 @router.websocket("/ws")

@@ -240,3 +240,23 @@ async def mark_read(db: AsyncSession, me: User, conv_id: int, message_id: int) -
         mine.last_read_message_id = message_id
         await db.commit()
     return mine.last_read_message_id
+
+
+async def member_ids(db: AsyncSession, conv_id: int) -> list[int]:
+    return list(
+        await db.scalars(
+            select(ConversationMember.user_id).where(ConversationMember.conversation_id == conv_id)
+        )
+    )
+
+
+async def peer_ids(db: AsyncSession, user_id: int) -> list[int]:
+    """Distinct users who share at least one conversation with user_id (excluding them)."""
+    mine = select(ConversationMember.conversation_id).where(ConversationMember.user_id == user_id)
+    return list(
+        await db.scalars(
+            select(ConversationMember.user_id)
+            .where(ConversationMember.conversation_id.in_(mine), ConversationMember.user_id != user_id)
+            .distinct()
+        )
+    )

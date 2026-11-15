@@ -17,6 +17,7 @@ from app.schemas.chat import (
 )
 from app.services import chat
 from app.services.chat import ChatError
+from app.ws import notify
 
 router = APIRouter(prefix="/conversations", tags=["Conversations"])
 
@@ -91,7 +92,9 @@ async def send_message(
     conv_id: int, data: MessageCreate, db: AsyncSession = Depends(get_db),
     me: User = Depends(get_current_user),
 ):
-    return await _call(chat.send_message(db, me, conv_id, data.content))
+    msg = await _call(chat.send_message(db, me, conv_id, data.content))
+    await notify.publish_message(db, msg)
+    return msg
 
 
 @router.get("/{conv_id}/messages", response_model=list[MessageOut])
