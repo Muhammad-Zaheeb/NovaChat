@@ -14,6 +14,7 @@ export default function UserPicker({
   const me = useAuth((s) => s.user)
   const [q, setQ] = useState('')
   const [results, setResults] = useState<UserPublic[]>([])
+  const [settled, setSettled] = useState('')
   const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle')
 
   useEffect(() => {
@@ -22,6 +23,7 @@ export default function UserPicker({
       setState('loading')
       try {
         setResults((await usersApi.search(q.trim())).filter((u) => u.id !== me?.id))
+        setSettled(q.trim())
         setState('idle')
       } catch {
         setState('error')
@@ -47,7 +49,9 @@ export default function UserPicker({
           </li>
         ) : state === 'error' ? (
           <li className="p-3 text-sm text-red-600 dark:text-red-400">Search failed</li>
-        ) : results.length === 0 && state !== 'loading' ? (
+        ) : settled !== q.trim() ? (
+          <li className="p-3 text-sm text-slate-500 dark:text-slate-400">Searching…</li>
+        ) : results.length === 0 ? (
           <li className="p-3 text-sm text-slate-500 dark:text-slate-400">
             No users found
           </li>

@@ -176,28 +176,33 @@ export default function ChatPage() {
   const down = useConn((s) => s.status === 'down')
 
   return (
-    <div className="relative flex h-full">
+    <div className="flex h-full flex-col">
       {down && (
-        <div className="absolute inset-x-0 top-0 z-20 bg-amber-500 py-0.5 text-center text-xs font-medium text-white">
+        <div
+          role="status"
+          className="bg-amber-500 py-0.5 text-center text-xs font-medium text-slate-900"
+        >
           Reconnecting…
         </div>
       )}
-      <div className={`${id ? 'hidden md:flex' : 'flex'} h-full w-full md:w-auto`}>
-        <Sidebar theme={theme} toggleTheme={toggle} />
-      </div>
-      <main className={`${id ? 'flex' : 'hidden md:flex'} min-w-0 flex-1 flex-col`}>
-        {id ? (
-          Number.isInteger(Number(id)) ? (
-            <Conversation id={Number(id)} key={id} />
+      <div className="flex min-h-0 flex-1">
+        <div className={`${id ? 'hidden md:flex' : 'flex'} h-full w-full md:w-auto`}>
+          <Sidebar theme={theme} toggleTheme={toggle} />
+        </div>
+        <main className={`${id ? 'flex' : 'hidden md:flex'} min-w-0 flex-1 flex-col`}>
+          {id ? (
+            Number.isInteger(Number(id)) ? (
+              <Conversation id={Number(id)} key={id} />
+            ) : (
+              <NotFound message="Conversation not found" />
+            )
           ) : (
-            <NotFound message="Conversation not found" />
-          )
-        ) : (
-          <div className="flex flex-1 items-center justify-center text-slate-500 dark:text-slate-400">
-            Select a conversation or start a new chat
-          </div>
-        )}
-      </main>
+            <div className="flex flex-1 items-center justify-center text-slate-500 dark:text-slate-400">
+              Select a conversation or start a new chat
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   )
 }
