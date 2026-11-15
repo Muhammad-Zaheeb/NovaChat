@@ -2,6 +2,7 @@ import { useAuth } from '../store/auth'
 import { useLive } from '../store/live'
 import { useChat } from '../store/chat'
 import { usersApi } from '../api'
+import { useFriends } from '../store/friends'
 import { toast } from '../store/toast'
 import * as socket from './socket'
 
@@ -106,6 +107,21 @@ export function startLive(): () => void {
         void chat.loadDetail(e.conversation_id).catch(() => {})
     }),
   )
+  const reloadFriends = () => void useFriends.getState().load().catch(() => {})
+  offs.push(
+    socket.on('friend.request', (e) => {
+      reloadFriends()
+      toast(`${e.user.username} sent you a friend request`, 'info')
+    }),
+  )
+  offs.push(
+    socket.on('friend.accepted', (e) => {
+      reloadFriends()
+      toast(`${e.user.username} is now your friend`, 'info')
+    }),
+  )
+  offs.push(socket.on('friend.removed', reloadFriends))
+  offs.push(socket.onOpen((re) => re && reloadFriends()))
   offs.push(socket.on('error', (e) => toast(e.detail || 'Realtime error')))
   offs.push(socket.onClose(() => toast('Connection lost. Reconnecting…')))
   offs.push(socket.onOpen((re) => re && toast('Back online', 'info')))

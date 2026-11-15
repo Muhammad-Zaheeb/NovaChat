@@ -9,6 +9,9 @@ export interface ServerEvents {
     change: 'member_added' | 'member_removed' | 'member_left'
     user_id: number
   }
+  'friend.request': { id: number; user: { id: number; username: string } }
+  'friend.accepted': { id: number; user: { id: number; username: string } }
+  'friend.removed': { user_id: number; request_id?: number }
   presence: { user_id: number; online: boolean }
   error: { code: string; detail: string }
   pong: Record<string, never>

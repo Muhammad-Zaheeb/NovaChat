@@ -6,6 +6,7 @@ export interface User {
 export interface UserPublic {
   id: number
   username: string
+  friendship_status?: FriendshipStatus
 }
 export type ConversationType = 'direct' | 'group'
 export type MemberRole = 'admin' | 'member'
@@ -35,4 +36,16 @@ export interface Conversation {
 }
 export interface ConversationDetail extends Conversation {
   members: Member[]
+}
+
+export type FriendshipStatus = 'none' | 'pending_outgoing' | 'pending_incoming' | 'friends'
+export interface Friend extends UserPublic {
+  online: boolean
+}
+export interface FriendRequest {
+  id: number
+  status: string
+  created_at: string
+  requester: UserPublic
+  addressee: UserPublic
 }

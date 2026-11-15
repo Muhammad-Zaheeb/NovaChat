@@ -21,6 +21,7 @@ export default function App() {
         <Route path="/register" element={<AuthPage mode="register" />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<ChatPage />} />
+          <Route path="/friends" element={<ChatPage view="friends" />} />
           <Route path="/c/:id" element={<ChatPage />} />
         </Route>
         <Route

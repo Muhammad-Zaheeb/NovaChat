@@ -135,7 +135,11 @@ export default function GroupInfoDialog({
       {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
       {adding ? (
         <div className="mt-3 border-t border-slate-200 pt-3 dark:border-slate-800">
-          <UserPicker onPick={add} selectedIds={members.map((m) => m.user.id)} />
+          <UserPicker
+            onPick={add}
+            selectedIds={members.map((m) => m.user.id)}
+            friendsOnly
+          />
           <button
             onClick={() => setAdding(false)}
             className="mt-2 h-10 text-sm text-slate-500 dark:text-slate-400 underline"

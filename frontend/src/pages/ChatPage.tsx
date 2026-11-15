@@ -4,11 +4,13 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import GroupInfoDialog from '../components/GroupInfoDialog'
 import Composer from '../components/Composer'
 import MessageList from '../components/MessageList'
+import FriendsView from '../components/FriendsView'
 import Sidebar from '../components/Sidebar'
 import NotFound from '../components/NotFound'
 import { Avatar, Button } from '../components/ui'
 import { useAuth } from '../store/auth'
 import { conversationTitle, useChat } from '../store/chat'
+import { useFriends } from '../store/friends'
 import { typingText, useLive } from '../store/live'
 import { startLive } from '../ws/live'
 import { useConn } from '../ws/socket'
@@ -163,11 +165,17 @@ function Conversation({ id }: { id: number }) {
   )
 }
 
-export default function ChatPage() {
+export default function ChatPage({ view }: { view?: 'friends' }) {
   const { id } = useParams()
   const { theme, toggle } = useTheme()
   const reset = useChat((s) => s.reset)
-  useEffect(() => reset, [reset])
+  useEffect(
+    () => () => {
+      reset()
+      useFriends.getState().reset()
+    },
+    [reset],
+  )
   useEffect(() => startLive(), [])
   const unread = useChat((s) =>
     Object.values(s.conversations).reduce((n, c) => n + c.unread_count, 0),
@@ -199,11 +207,13 @@ export default function ChatPage() {
         </div>
       )}
       <div className="flex min-h-0 flex-1">
-        <div className={`${id ? 'hidden md:flex' : 'flex'} h-full w-full md:w-auto`}>
+        <div className={`${id || view ? 'hidden md:flex' : 'flex'} h-full w-full md:w-auto`}>
           <Sidebar theme={theme} toggleTheme={toggle} />
         </div>
-        <main className={`${id ? 'flex' : 'hidden md:flex'} min-w-0 flex-1 flex-col`}>
-          {id ? (
+        <main className={`${id || view ? 'flex' : 'hidden md:flex'} min-w-0 flex-1 flex-col`}>
+          {view === 'friends' ? (
+            <FriendsView />
+          ) : id ? (
             Number.isInteger(Number(id)) ? (
               <Conversation id={Number(id)} key={id} />
             ) : (

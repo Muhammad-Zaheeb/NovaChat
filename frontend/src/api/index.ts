@@ -1,5 +1,5 @@
 import { api } from './client'
-import type { Conversation, ConversationDetail, Message, User, UserPublic } from './types'
+import type { Friend, FriendRequest, Conversation, ConversationDetail, Message, User, UserPublic } from './types'
 
 export * from './types'
 export { errorMessage, setUnauthorizedHandler } from './client'
@@ -49,4 +49,17 @@ export const chatApi = {
     api.post<{ last_read_message_id: number | null }>(`/conversations/${id}/read`, {
       message_id,
     }),
+}
+
+export const friendsApi = {
+  list: () => api.get<Friend[]>('/friends').then((r) => r.data),
+  requests: () =>
+    api
+      .get<{ incoming: FriendRequest[]; outgoing: FriendRequest[] }>('/friends/requests')
+      .then((r) => r.data),
+  send: (user_id: number) => api.post<FriendRequest>('/friends/requests', { user_id }),
+  accept: (id: number) => api.post(`/friends/requests/${id}/accept`),
+  decline: (id: number) => api.post(`/friends/requests/${id}/decline`),
+  cancel: (id: number) => api.delete(`/friends/requests/${id}`),
+  unfriend: (user_id: number) => api.delete(`/friends/${user_id}`),
 }

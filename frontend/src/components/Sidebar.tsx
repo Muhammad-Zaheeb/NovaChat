@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom'
 import { formatTime } from '../lib'
 import { useAuth } from '../store/auth'
 import { conversationTitle, useChat } from '../store/chat'
+import { useFriends } from '../store/friends'
 import { typingText, useLive } from '../store/live'
 import { NewChatDialog, NewGroupDialog } from './NewChatDialogs'
 import { Avatar, Button } from './ui'
@@ -35,6 +36,11 @@ export default function Sidebar({
   const { conversations, details, listLoaded, loadConversations } = useChat()
   const typing = useLive((s) => s.typing)
   const online = useLive((s) => s.online)
+  const pendingIn = useFriends((s) => s.incoming.length)
+  const loadFriends = useFriends((s) => s.load)
+  useEffect(() => {
+    void loadFriends().catch(() => {})
+  }, [loadFriends])
   const [dialog, setDialog] = useState<'chat' | 'group' | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -77,6 +83,22 @@ export default function Sidebar({
           New group
         </Button>
       </div>
+      <NavLink
+        to="/friends"
+        className={({ isActive }) =>
+          `mx-2 mb-1 flex min-h-11 items-center justify-between rounded-lg px-2 text-sm font-medium ${isActive ? 'bg-brand-50 dark:bg-slate-800' : 'hover:bg-slate-100 dark:hover:bg-slate-800/60'}`
+        }
+      >
+        <span>Friends</span>
+        {pendingIn > 0 && (
+          <span
+            aria-label={`${pendingIn} pending friend requests`}
+            className="rounded-full bg-brand-600 px-2 py-0.5 text-xs font-semibold text-white"
+          >
+            {pendingIn}
+          </span>
+        )}
+      </NavLink>
       <nav className="flex-1 overflow-y-auto">
         {failed ? (
           <div className="p-4 text-sm">
