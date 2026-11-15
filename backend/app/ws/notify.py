@@ -15,3 +15,31 @@ async def publish_message(db: AsyncSession, msg: Message, client_id: str | None 
     await manager.send_to_users(
         await chat.member_ids(db, msg.conversation_id), events.event(events.MESSAGE_NEW, payload)
     )
+
+
+async def publish_read(db: AsyncSession, conv_id: int, user_id: int, message_id: int) -> None:
+    await manager.send_to_users(
+        await chat.member_ids(db, conv_id),
+        events.event(
+            events.MESSAGE_READ,
+            {"conversation_id": conv_id, "user_id": user_id, "message_id": message_id},
+        ),
+    )
+
+
+async def publish_typing(db: AsyncSession, conv_id: int, user_id: int, is_typing: bool) -> None:
+    others = [u for u in await chat.member_ids(db, conv_id) if u != user_id]
+    await manager.send_to_users(
+        others,
+        events.event(
+            events.TYPING,
+            {"conversation_id": conv_id, "user_id": user_id, "is_typing": is_typing},
+        ),
+    )
+
+
+async def publish_presence(db: AsyncSession, user_id: int, online: bool) -> None:
+    await manager.send_to_users(
+        await chat.peer_ids(db, user_id),
+        events.event(events.PRESENCE, {"user_id": user_id, "online": online}),
+    )

@@ -113,4 +113,6 @@ async def mark_read(
     conv_id: int, data: ReadMark, db: AsyncSession = Depends(get_db),
     me: User = Depends(get_current_user),
 ):
-    return ReadState(last_read_message_id=await _call(chat.mark_read(db, me, conv_id, data.message_id)))
+    marker = await _call(chat.mark_read(db, me, conv_id, data.message_id))
+    await notify.publish_read(db, conv_id, me.id, marker)
+    return ReadState(last_read_message_id=marker)

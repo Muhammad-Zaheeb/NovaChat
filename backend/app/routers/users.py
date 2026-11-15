@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
 from app.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.user import UserPublic
-from app.services import users
+from app.services import chat, users
+from app.ws.manager import manager
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -18,3 +19,18 @@ async def search_users(
     me: User = Depends(get_current_user),
 ):
     return await users.search_users(db, me, q, limit)
+
+
+@router.get("/online")
+async def online_users(
+    ids: str = Query(max_length=1000, description="Comma-separated user ids"),
+    db: AsyncSession = Depends(get_db),
+    me: User = Depends(get_current_user),
+):
+    """Which of `ids` are online. Only users sharing a conversation with the caller are reported."""
+    try:
+        wanted = {int(i) for i in ids.split(",") if i.strip()}
+    except ValueError:
+        raise HTTPException(status_code=422, detail="ids must be comma-separated integers")
+    wanted &= set(await chat.peer_ids(db, me.id)) | {me.id}
+    return {"online": sorted(await manager.filter_online(wanted))}
