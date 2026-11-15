@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom'
 import { formatTime } from '../lib'
 import { useAuth } from '../store/auth'
 import { conversationTitle, useChat } from '../store/chat'
+import { typingText, useLive } from '../store/live'
 import { NewChatDialog, NewGroupDialog } from './NewChatDialogs'
 import { Avatar, Button } from './ui'
 
@@ -16,6 +17,7 @@ export default function Sidebar({
   const me = useAuth((s) => s.user)!
   const logout = useAuth((s) => s.logout)
   const { conversations, details, listLoaded, loadConversations } = useChat()
+  const typing = useLive((s) => s.typing)
   const [dialog, setDialog] = useState<'chat' | 'group' | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -64,6 +66,10 @@ export default function Sidebar({
         ) : (
           sorted.map((c) => {
             const title = conversationTitle(c, details[c.id], me.id)
+            const names = Object.fromEntries(
+              (details[c.id]?.members ?? []).map((m) => [m.user.id, m.user.username]),
+            )
+            const typingHint = typingText(typing[c.id], names)
             return (
               <NavLink
                 key={c.id}
@@ -83,11 +89,14 @@ export default function Sidebar({
                     )}
                   </div>
                   <div className="flex items-center justify-between gap-2">
-                    <span className="truncate text-sm text-slate-500">
-                      {c.last_message
-                        ? (c.last_message.sender_id === me.id ? 'You: ' : '') +
-                          c.last_message.content
-                        : 'No messages yet'}
+                    <span
+                      className={`truncate text-sm ${typingHint ? 'text-brand-600 italic' : 'text-slate-500'}`}
+                    >
+                      {typingHint ||
+                        (c.last_message
+                          ? (c.last_message.sender_id === me.id ? 'You: ' : '') +
+                            c.last_message.content
+                          : 'No messages yet')}
                     </span>
                     {c.unread_count > 0 && (
                       <span className="shrink-0 rounded-full bg-brand-600 px-2 py-0.5 text-xs font-semibold text-white">

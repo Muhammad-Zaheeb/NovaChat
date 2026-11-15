@@ -1,5 +1,6 @@
-import { useState, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { useChat } from '../store/chat'
+import * as socket from '../ws/socket'
 
 const MAX = 4000
 
@@ -7,9 +8,36 @@ export default function Composer({ convId }: { convId: number }) {
   const sendLive = useChat((s) => s.sendLive)
   const [text, setText] = useState('')
 
+  const lastStart = useRef(0)
+  const idle = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const typing = useRef(false)
+
+  const stopTyping = () => {
+    clearTimeout(idle.current)
+    if (typing.current) socket.send('typing.stop', { conversation_id: convId })
+    typing.current = false
+    lastStart.current = 0
+  }
+  // Leaving the chat counts as stopping.
+  useEffect(() => stopTyping, [])
+
+  const onType = (value: string) => {
+    setText(value)
+    if (!value.trim()) return stopTyping()
+    const now = Date.now()
+    if (now - lastStart.current > 2000) {
+      socket.send('typing.start', { conversation_id: convId })
+      lastStart.current = now
+      typing.current = true
+    }
+    clearTimeout(idle.current)
+    idle.current = setTimeout(stopTyping, 3000)
+  }
+
   const submit = () => {
     const content = text.trim()
     if (!content || content.length > MAX) return
+    stopTyping()
     sendLive(convId, content)
     setText('')
   }
@@ -28,7 +56,7 @@ export default function Composer({ convId }: { convId: number }) {
           rows={1}
           value={text}
           maxLength={MAX}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => onType(e.target.value)}
           onKeyDown={onKey}
           placeholder="Type a message…  (Enter to send, Shift+Enter for new line)"
           className="max-h-40 min-h-[40px] flex-1 resize-none rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none [field-sizing:content] focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-900"

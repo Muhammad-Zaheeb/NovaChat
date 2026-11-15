@@ -6,6 +6,7 @@ import Sidebar from '../components/Sidebar'
 import { Avatar } from '../components/ui'
 import { useAuth } from '../store/auth'
 import { conversationTitle, useChat } from '../store/chat'
+import { typingText, useLive } from '../store/live'
 import { startLive } from '../ws/live'
 import { useConn } from '../ws/socket'
 
@@ -35,6 +36,7 @@ function Conversation({ id }: { id: number }) {
   const me = useAuth((s) => s.user)!
   const conv = useChat((s) => s.conversations[id])
   const detail = useChat((s) => s.details[id])
+  const typingIds = useLive((s) => s.typing[id])
   const lastId = useChat((s) => s.threads[id]?.items.at(-1)?.id)
   const { openConversation, markRead, listLoaded, setActive } = useChat()
   const [error, setError] = useState(false)
@@ -86,8 +88,13 @@ function Conversation({ id }: { id: number }) {
         <Avatar name={title} size={36} />
         <div>
           <div className="font-semibold">{title}</div>
-          {conv.type === 'group' && detail && (
-            <div className="text-xs text-slate-500">{detail.members.length} members</div>
+          {typingText(typingIds, names) ? (
+            <div className="text-xs text-brand-600">{typingText(typingIds, names)}</div>
+          ) : (
+            conv.type === 'group' &&
+            detail && (
+              <div className="text-xs text-slate-500">{detail.members.length} members</div>
+            )
           )}
         </div>
       </header>

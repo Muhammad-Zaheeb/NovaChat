@@ -1,4 +1,5 @@
 import { useAuth } from '../store/auth'
+import { useLive } from '../store/live'
 import { useChat } from '../store/chat'
 import * as socket from './socket'
 
@@ -21,6 +22,17 @@ export function startLive(): () => void {
       const me = useAuth.getState().user
       if (me) useChat.getState().onMessageEvent(m, me.id)
     }),
+  )
+  offs.push(
+    socket.on('typing', (e) =>
+      useLive.getState().setTyping(e.conversation_id, e.user_id, e.is_typing),
+    ),
+  )
+  // A message from someone means they stopped typing.
+  offs.push(
+    socket.on('message.new', (m) =>
+      useLive.getState().setTyping(m.conversation_id, m.sender_id, false),
+    ),
   )
   // Sends still waiting for an echo cannot be confirmed once the socket drops.
   offs.push(
