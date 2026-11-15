@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { usersApi, type UserPublic } from '../api'
 import { useAuth } from '../store/auth'
 import { Avatar, Input } from './ui'
@@ -16,29 +16,35 @@ export default function UserPicker({
   const [results, setResults] = useState<UserPublic[]>([])
   const [settled, setSettled] = useState('')
   const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle')
+  const seq = useRef(0)
 
   useEffect(() => {
-    if (q.trim().length < 2) return
+    const term = q.trim()
+    const mine = ++seq.current // any response from an older query is ignored
+    if (term.length < 2) return // the list is derived from `term`, so stale results never show
     const t = setTimeout(async () => {
       setState('loading')
       try {
-        setResults((await usersApi.search(q.trim())).filter((u) => u.id !== me?.id))
-        setSettled(q.trim())
+        const found = (await usersApi.search(term)).filter((u) => u.id !== me?.id)
+        if (mine !== seq.current) return
+        setResults(found)
+        setSettled(term)
         setState('idle')
       } catch {
-        setState('error')
+        if (mine === seq.current) setState('error')
       }
     }, 250)
     return () => clearTimeout(t)
   }, [q, me?.id])
 
-  const short = q.trim().length < 2
+  const term = q.trim()
+  const short = term.length < 2
   return (
     <div>
       <Input
         aria-label="Search users"
         autoFocus
-        placeholder="Search by username…"
+        placeholder="Search by username or exact email…"
         value={q}
         onChange={(e) => setQ(e.target.value)}
       />
@@ -47,9 +53,9 @@ export default function UserPicker({
           <li className="p-3 text-sm text-slate-500 dark:text-slate-400">
             Type at least 2 characters
           </li>
-        ) : state === 'error' ? (
+        ) : state === 'error' && settled !== term ? (
           <li className="p-3 text-sm text-red-600 dark:text-red-400">Search failed</li>
-        ) : settled !== q.trim() ? (
+        ) : settled !== term ? (
           <li className="p-3 text-sm text-slate-500 dark:text-slate-400">Searching…</li>
         ) : results.length === 0 ? (
           <li className="p-3 text-sm text-slate-500 dark:text-slate-400">

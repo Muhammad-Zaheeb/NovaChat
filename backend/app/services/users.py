@@ -1,5 +1,5 @@
 """User lookup logic."""
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
@@ -19,7 +19,7 @@ async def search_users(db: AsyncSession, me: User, q: str, limit: int) -> list[U
         select(User)
         .where(
             User.id != me.id,
-            User.username.ilike(f"%{pattern}%", escape="\\") | (User.email == q.lower()),
+            User.username.ilike(f"%{pattern}%", escape="\\") | (func.lower(User.email) == q.lower()),
         )
         .order_by(rank, User.username)
         .limit(min(max(limit, 1), 50))
