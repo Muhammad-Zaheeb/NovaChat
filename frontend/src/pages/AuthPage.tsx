@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { errorMessage } from '../api'
 import { Button, Input } from '../components/ui'
 import { useAuth } from '../store/auth'
@@ -8,6 +8,7 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   const isRegister = mode === 'register'
   const { user, login, register } = useAuth()
   const navigate = useNavigate()
+  const notice = (useLocation().state as { notice?: string } | null)?.notice
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -37,8 +38,15 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
     setError('')
     setBusy(true)
     try {
-      if (isRegister) await register(username, email, password)
-      else await login(email, password)
+      if (isRegister) {
+        await register(username, email, password)
+        navigate('/login', {
+          replace: true,
+          state: { notice: 'Account created — please sign in' },
+        })
+        return
+      }
+      await login(email, password)
       navigate('/', { replace: true })
     } catch (err) {
       setError(
@@ -89,6 +97,14 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
           autoComplete={isRegister ? 'new-password' : 'current-password'}
           onChange={(e) => setPassword(e.target.value)}
         />
+        {notice && !error && (
+          <p
+            role="status"
+            className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-950 dark:text-green-400"
+          >
+            {notice}
+          </p>
+        )}
         {error && (
           <p
             role="alert"

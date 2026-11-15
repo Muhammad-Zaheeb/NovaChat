@@ -27,8 +27,6 @@ export const useAuth = create<AuthState>((set) => ({
   },
   register: async (username, email, password) => {
     await authApi.register({ username, email, password })
-    await authApi.login({ email, password })
-    set({ user: await authApi.me() })
   },
   logout: async () => {
     try {
