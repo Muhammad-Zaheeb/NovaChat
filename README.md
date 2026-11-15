@@ -80,6 +80,25 @@ npm run dev      # http://localhost:5173
 
 The dev server proxies `/api` (prefix stripped) and `/ws` to the backend, so the browser sees a single origin and the auth cookie works without extra CORS setup. Other scripts: `npm run build`, `npm run lint`, `npm run format`.
 
+## Email setup (Gmail)
+
+New accounts must verify their email with a 6-digit code (valid 10 minutes, 5 attempts, resends limited to 1/min and 5/hour). By default (`EMAIL_BACKEND=console`) the code is printed in the backend terminal. To send real email through Gmail:
+
+1. Turn on **2-Step Verification**: Google Account → Security → 2-Step Verification.
+2. Create an **App password**: Google Account → Security → *App passwords* (search for it if it is not listed), name it "NovaChat" and copy the 16-character password.
+3. In `backend/.env` set:
+
+```
+EMAIL_BACKEND=smtp
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your.address@gmail.com
+SMTP_PASSWORD=<the 16-character app password, no spaces>
+EMAIL_FROM=NovaChat <your.address@gmail.com>
+```
+
+4. Restart the backend. Never commit `.env`.
+
 ## WebSocket protocol
 
 Connect to `ws(s)://<host>/ws`. The browser sends the same `access_token` cookie as the REST API (use `credentials: "include"` semantics, i.e. log in first). Missing/invalid cookie → rejected (close code 4401); disallowed `Origin` → rejected (4403).

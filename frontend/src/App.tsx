@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute'
+import VerifyPage from './pages/VerifyPage'
 import AuthPage from './pages/AuthPage'
 import NotFound from './components/NotFound'
 import ChatPage from './pages/ChatPage'
@@ -16,6 +17,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<AuthPage mode="login" />} />
+        <Route path="/verify" element={<VerifyPage />} />
         <Route path="/register" element={<AuthPage mode="register" />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<ChatPage />} />

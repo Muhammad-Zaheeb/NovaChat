@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { errorMessage } from '../api'
+import axios from 'axios'
+import { authApi, errorMessage } from '../api'
 import { Button, Input } from '../components/ui'
 import { useAuth } from '../store/auth'
 
@@ -40,15 +41,28 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
     try {
       if (isRegister) {
         await register(username, email, password)
-        navigate('/login', {
+        navigate('/verify', {
           replace: true,
-          state: { notice: 'Account created — please sign in' },
+          state: { email, notice: 'Account created — enter the code we emailed you' },
         })
         return
       }
       await login(email, password)
       navigate('/', { replace: true })
     } catch (err) {
+      if (
+        !isRegister &&
+        axios.isAxiosError(err) &&
+        err.response?.status === 403 &&
+        err.response.data?.detail === 'email_not_verified'
+      ) {
+        await authApi.resendCode(email).catch(() => {}) // may be rate limited: an earlier code still works
+        navigate('/verify', {
+          replace: true,
+          state: { email, notice: 'Please verify your email to sign in' },
+        })
+        return
+      }
       setError(
         errorMessage(err, isRegister ? 'Registration failed' : 'Login failed').replace(
           'Invalid credentials',

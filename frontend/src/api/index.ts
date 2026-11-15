@@ -8,6 +8,9 @@ export const authApi = {
   register: (b: { username: string; email: string; password: string }) =>
     api.post<User>('/auth/register', b).then((r) => r.data),
   login: (b: { email: string; password: string }) => api.post('/auth/login', b),
+  verifyEmail: (email: string, code: string) =>
+    api.post('/auth/verify-email', { email, code }),
+  resendCode: (email: string) => api.post('/auth/resend-code', { email }),
   logout: () => api.post('/auth/logout'),
   me: () => api.get<User>('/auth/me').then((r) => r.data),
 }
