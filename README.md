@@ -99,6 +99,11 @@ EMAIL_FROM=NovaChat <your.address@gmail.com>
 
 4. Restart the backend. Never commit `.env`.
 
+## Friends
+
+Direct chats and group membership require friendship. `POST /friends/requests {user_id}` (auto-accepts if they already asked you), `GET /friends/requests` (`incoming`/`outgoing`), `POST /friends/requests/{id}/accept|decline`, `DELETE /friends/requests/{id}` (cancel yours), `GET /friends`, `DELETE /friends/{user_id}`. `/users/search` results carry `friendship_status` (`none|pending_outgoing|pending_incoming|friends`).
+Rules: `POST /conversations/direct` to a non-friend → 403 `not_friends` (an already-existing DM stays usable); group creation and adding members need each person to be the adder's friend. A declined request can be re-sent immediately. Existing conversations are unaffected by unfriending.
+
 ## WebSocket protocol
 
 Connect to `ws(s)://<host>/ws`. The browser sends the same `access_token` cookie as the REST API (use `credentials: "include"` semantics, i.e. log in first). Missing/invalid cookie → rejected (close code 4401); disallowed `Origin` → rejected (4403).
@@ -123,6 +128,9 @@ All frames are JSON: `{"type": "<event>", "payload": {...}}`. Bad input gets an 
 | `message.read` | `conversation_id, user_id, message_id` (all members) |
 | `presence` | `user_id, online` (users sharing a conversation; fired on first connect / last disconnect) |
 | `conversation.updated` | `conversation_id, change` (`member_added` \| `member_removed` \| `member_left`), `user_id` (the affected user). Sent to all remaining members **and** the affected user, so an added user can load the conversation and a removed one can drop it. |
+| `friend.request` | `id, user{id,username}` — someone sent you a friend request |
+| `friend.accepted` | `id, user{id,username}` — your request was accepted (or a mutual request auto-accepted) |
+| `friend.removed` | `user_id`, optional `request_id` — the other party unfriended you, declined or cancelled a request; refetch `/friends` and `/friends/requests` |
 | `error` | `code` (`invalid_payload`, `bad_request`, `unknown_event`, `not_found`, `forbidden`…), `detail` |
 | `pong` | none |
 

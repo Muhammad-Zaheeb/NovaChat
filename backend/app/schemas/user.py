@@ -16,3 +16,7 @@ class UserPublic(BaseModel):
 
     id: int
     username: str
+
+
+class UserSearchResult(UserPublic):
+    friendship_status: str = "none"  # none | pending_outgoing | pending_incoming | friends

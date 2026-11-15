@@ -58,3 +58,8 @@ async def publish_membership(
             {"conversation_id": conv_id, "change": change, "user_id": user_id},
         ),
     )
+
+
+async def publish_friend(kind: str, to_user: int, **payload) -> None:
+    """kind: events.FRIEND_REQUEST | FRIEND_ACCEPTED | FRIEND_REMOVED, sent to the other party."""
+    await manager.send_to_users([to_user], events.event(kind, payload))

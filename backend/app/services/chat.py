@@ -12,6 +12,7 @@ from app.models.conversation import (
 )
 from app.models.message import Message, MessageType
 from app.models.user import User
+from app.services import friends
 
 
 class ChatError(Exception):
@@ -64,7 +65,9 @@ async def get_or_create_direct(db: AsyncSession, me: User, other_id: int) -> Con
         )
     )
     if existing:
-        return existing
+        return existing  # conversations that predate friendships stay reachable
+    if not await friends.are_friends(db, me.id, other_id):
+        raise ChatError(403, "not_friends")
     conv = Conversation(type=ConversationType.direct, created_by=me.id)
     conv.members = [
         ConversationMember(user_id=me.id, role=MemberRole.member),
@@ -81,6 +84,8 @@ async def create_group(
     others = set(member_ids) - {me.id}
     if others:
         await _require_users(db, others)
+        if await friends.non_friends(db, me.id, others):
+            raise ChatError(403, "not_friends")
     conv = Conversation(type=ConversationType.group, name=name, created_by=me.id)
     conv.members = [ConversationMember(user_id=me.id, role=MemberRole.admin)] + [
         ConversationMember(user_id=u, role=MemberRole.member) for u in sorted(others)
@@ -167,6 +172,8 @@ async def add_member(db: AsyncSession, me: User, conv_id: int, user_id: int) -> 
     await _require_users(db, {user_id})
     if await get_membership(db, conv_id, user_id):
         raise ChatError(409, "User is already a member")
+    if not await friends.are_friends(db, me.id, user_id):
+        raise ChatError(403, "not_friends")
     db.add(ConversationMember(conversation_id=conv_id, user_id=user_id, role=MemberRole.member))
     await db.commit()
 

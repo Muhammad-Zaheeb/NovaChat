@@ -34,7 +34,7 @@ async def _clean():
     yield
     async with engine.begin() as conn:
         await conn.execute(
-            text("TRUNCATE users, email_verification_codes, conversations, conversation_members, messages RESTART IDENTITY CASCADE")
+            text("TRUNCATE users, email_verification_codes, friendships, conversations, conversation_members, messages RESTART IDENTITY CASCADE")
         )
 
 
@@ -74,6 +74,13 @@ async def client():
 @pytest_asyncio.fixture
 async def users():
     clients = {n: await register_login(n) for n in ("alice", "bob", "carol", "mallory")}
+    names = list(clients)
+    for i, a in enumerate(names):  # everyone is friends with everyone by default
+        for b in names[i + 1:]:
+            r = await clients[a].post("/friends/requests", json={"user_id": clients[b].user_id})
+            assert r.status_code == 201, r.text
+            r = await clients[b].post(f"/friends/requests/{r.json()['id']}/accept")
+            assert r.status_code == 200, r.text
     yield clients
     for c in clients.values():
         await c.aclose()
