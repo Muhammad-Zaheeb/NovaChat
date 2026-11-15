@@ -67,3 +67,33 @@ python -m pytest
 
 API runs at http://localhost:8000 (docs at `/docs`, DB check at `/health`).
 Endpoints: `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `GET /users/search`, plus `/conversations` (direct/group chats, members, messages, read receipts and unread counts).
+
+## WebSocket protocol
+
+Connect to `ws(s)://<host>/ws`. The browser sends the same `access_token` cookie as the REST API (use `credentials: "include"` semantics, i.e. log in first). Missing/invalid cookie → rejected (close code 4401); disallowed `Origin` → rejected (4403).
+
+All frames are JSON: `{"type": "<event>", "payload": {...}}`. Bad input gets an `error` event; the socket stays open.
+
+**Client → server**
+
+| type | payload |
+|---|---|
+| `message.send` | `conversation_id`, `content` (1–4000 chars), `client_id` (optional, echoed back) |
+| `typing.start` / `typing.stop` | `conversation_id` (`start` is limited to 1 per conversation per second) |
+| `message.read` | `conversation_id`, `message_id` |
+| `ping` | none |
+
+**Server → client**
+
+| type | payload |
+|---|---|
+| `message.new` | full message (`id, conversation_id, sender_id, content, type, created_at, edited_at`) + `client_id` (null if sent via REST). Sent to all members, including the sender. |
+| `typing` | `conversation_id, user_id, is_typing` (not sent to the typer) |
+| `message.read` | `conversation_id, user_id, message_id` (all members) |
+| `presence` | `user_id, online` (users sharing a conversation; fired on first connect / last disconnect) |
+| `error` | `code` (`invalid_payload`, `bad_request`, `unknown_event`, `not_found`, `forbidden`…), `detail` |
+| `pong` | none |
+
+`POST /conversations/{id}/messages` and `POST /conversations/{id}/read` emit the same events. Load initial presence with `GET /users/online?ids=1,2,3`.
+
+Limit: connections are held in-process, so this works with a single server process; Redis pub/sub replaces it at deploy time.
