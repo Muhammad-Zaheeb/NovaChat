@@ -68,6 +68,18 @@ python -m pytest
 API runs at http://localhost:8000 (docs at `/docs`, DB check at `/health`).
 Endpoints: `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `GET /users/search`, plus `/conversations` (direct/group chats, members, messages, read receipts and unread counts).
 
+## Run locally (frontend)
+
+Requires Node 22+ and the backend running on port 8000.
+
+```bash
+cd frontend
+npm install
+npm run dev      # http://localhost:5173
+```
+
+The dev server proxies `/api` (prefix stripped) and `/ws` to the backend, so the browser sees a single origin and the auth cookie works without extra CORS setup. Other scripts: `npm run build`, `npm run lint`, `npm run format`.
+
 ## WebSocket protocol
 
 Connect to `ws(s)://<host>/ws`. The browser sends the same `access_token` cookie as the REST API (use `credentials: "include"` semantics, i.e. log in first). Missing/invalid cookie → rejected (close code 4401); disallowed `Origin` → rejected (4403).
