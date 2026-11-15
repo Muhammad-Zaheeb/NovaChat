@@ -1,0 +1,133 @@
+import { useLayoutEffect, useRef, useState } from 'react'
+import type { Message } from '../api'
+import { clockTime, dayLabel } from '../lib'
+import { useChat } from '../store/chat'
+
+interface Props {
+  convId: number
+  meId: number
+  isGroup: boolean
+  names: Record<number, string>
+}
+
+const GROUP_GAP_MS = 5 * 60 * 1000
+
+export default function MessageList({ convId, meId, isGroup, names }: Props) {
+  const thread = useChat((s) => s.threads[convId])
+  const loadOlder = useChat((s) => s.loadOlder)
+  const ref = useRef<HTMLDivElement>(null)
+  const prev = useRef({ convId: -1, count: 0, firstId: 0, height: 0 })
+  const [loadingOlder, setLoadingOlder] = useState(false)
+  const items = thread?.items ?? []
+
+  // Keep position: stick to bottom for new/own messages, preserve offset when older ones are prepended.
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const p = prev.current
+    const first = items[0]?.id ?? 0
+    if (p.convId !== convId) {
+      el.scrollTop = el.scrollHeight
+    } else if (first < p.firstId && p.firstId !== 0) {
+      el.scrollTop = el.scrollHeight - p.height + el.scrollTop
+    } else if (items.length > p.count) {
+      const nearBottom = p.height - el.scrollTop - el.clientHeight < 150
+      const mine = items.at(-1)?.sender_id === meId
+      if (nearBottom || mine) el.scrollTop = el.scrollHeight
+    }
+    prev.current = {
+      convId,
+      count: items.length,
+      firstId: first,
+      height: el.scrollHeight,
+    }
+  })
+
+  const onScroll = async () => {
+    const el = ref.current
+    if (!el || el.scrollTop > 80 || loadingOlder || !thread?.hasMore) return
+    setLoadingOlder(true)
+    prev.current.height = el.scrollHeight
+    try {
+      await loadOlder(convId)
+    } finally {
+      setLoadingOlder(false)
+    }
+  }
+
+  if (!thread?.loaded)
+    return <div className="flex-1 p-6 text-center text-slate-500">Loading messages…</div>
+  if (items.length === 0)
+    return (
+      <div className="flex flex-1 items-center justify-center text-slate-500">
+        No messages yet. Say hello 👋
+      </div>
+    )
+
+  const rows: React.ReactNode[] = []
+  items.forEach((m: Message, i) => {
+    const before = items[i - 1]
+    const after = items[i + 1]
+    const newDay =
+      !before ||
+      new Date(before.created_at).toDateString() !== new Date(m.created_at).toDateString()
+    const sameAsBefore =
+      !newDay &&
+      before.sender_id === m.sender_id &&
+      new Date(m.created_at).getTime() - new Date(before.created_at).getTime() <
+        GROUP_GAP_MS
+    const sameAsAfter =
+      after &&
+      after.sender_id === m.sender_id &&
+      new Date(after.created_at).toDateString() ===
+        new Date(m.created_at).toDateString() &&
+      new Date(after.created_at).getTime() - new Date(m.created_at).getTime() <
+        GROUP_GAP_MS
+    const mine = m.sender_id === meId
+
+    if (newDay)
+      rows.push(
+        <div key={`d${m.id}`} className="my-3 text-center text-xs text-slate-500">
+          {dayLabel(m.created_at)}
+        </div>,
+      )
+    rows.push(
+      <div
+        key={m.id}
+        className={`flex flex-col ${mine ? 'items-end' : 'items-start'} ${sameAsBefore ? 'mt-0.5' : 'mt-3'}`}
+      >
+        {isGroup && !mine && !sameAsBefore && (
+          <span className="mb-0.5 ml-3 text-xs font-medium text-brand-600">
+            {names[m.sender_id] ?? 'Unknown'}
+          </span>
+        )}
+        <div
+          title={new Date(m.created_at).toLocaleString()}
+          className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm break-words whitespace-pre-wrap ${
+            mine
+              ? 'bg-brand-600 text-white'
+              : 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100'
+          }`}
+        >
+          {m.content}
+        </div>
+        {!sameAsAfter && (
+          <span className="mx-2 mt-0.5 text-[11px] text-slate-500">
+            {clockTime(m.created_at)}
+          </span>
+        )}
+      </div>,
+    )
+  })
+
+  return (
+    <div ref={ref} onScroll={onScroll} className="flex-1 overflow-y-auto px-4 py-2">
+      {thread.hasMore && (
+        <div className="py-2 text-center text-xs text-slate-500">
+          {loadingOlder ? 'Loading older messages…' : 'Scroll up for older messages'}
+        </div>
+      )}
+      {rows}
+    </div>
+  )
+}
