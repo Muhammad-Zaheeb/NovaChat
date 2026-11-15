@@ -24,6 +24,14 @@ class MessageCreate(BaseModel):
     content: str = Field(min_length=1, max_length=4000)
 
 
+class ReadMark(BaseModel):
+    message_id: int
+
+
+class ReadState(BaseModel):
+    last_read_message_id: int | None
+
+
 class MemberOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -53,6 +61,7 @@ class ConversationOut(BaseModel):
     created_by: int
     created_at: datetime
     last_message: MessageOut | None = None
+    unread_count: int = 0
 
 
 class ConversationDetail(ConversationOut):

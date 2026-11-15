@@ -12,6 +12,8 @@ from app.schemas.chat import (
     MemberAdd,
     MessageCreate,
     MessageOut,
+    ReadMark,
+    ReadState,
 )
 from app.services import chat
 from app.services.chat import ChatError
@@ -26,9 +28,10 @@ async def _call(coro):
         raise HTTPException(status_code=e.status, detail=e.detail)
 
 
-def _out(conv, last) -> ConversationOut:
+def _out(conv, last, unread) -> ConversationOut:
     out = ConversationOut.model_validate(conv)
     out.last_message = MessageOut.model_validate(last) if last else None
+    out.unread_count = unread
     return out
 
 
@@ -52,16 +55,17 @@ async def create_group(
 async def list_conversations(
     db: AsyncSession = Depends(get_db), me: User = Depends(get_current_user)
 ):
-    return [_out(c, m) for c, m in await chat.list_conversations(db, me)]
+    return [_out(c, m, n) for c, m, n in await chat.list_conversations(db, me)]
 
 
 @router.get("/{conv_id}", response_model=ConversationDetail)
 async def get_conversation(
     conv_id: int, db: AsyncSession = Depends(get_db), me: User = Depends(get_current_user)
 ):
-    conv, last = await _call(chat.get_conversation(db, me, conv_id))
+    conv, last, unread = await _call(chat.get_conversation(db, me, conv_id))
     out = ConversationDetail.model_validate(conv)
     out.last_message = MessageOut.model_validate(last) if last else None
+    out.unread_count = unread
     return out
 
 
@@ -99,3 +103,11 @@ async def list_messages(
     me: User = Depends(get_current_user),
 ):
     return await _call(chat.list_messages(db, me, conv_id, before, limit))
+
+
+@router.post("/{conv_id}/read", response_model=ReadState)
+async def mark_read(
+    conv_id: int, data: ReadMark, db: AsyncSession = Depends(get_db),
+    me: User = Depends(get_current_user),
+):
+    return ReadState(last_read_message_id=await _call(chat.mark_read(db, me, conv_id, data.message_id)))

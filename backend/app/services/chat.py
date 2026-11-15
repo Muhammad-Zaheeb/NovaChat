@@ -102,7 +102,31 @@ async def _last_messages(db: AsyncSession, conv_ids: list[int]) -> dict[int, Mes
     return {m.conversation_id: m for m in rows}
 
 
-async def list_conversations(db: AsyncSession, me: User) -> list[tuple[Conversation, Message | None]]:
+async def _unread_counts(db: AsyncSession, user_id: int, conv_ids: list[int]) -> dict[int, int]:
+    """Unread per conversation in one grouped query."""
+    if not conv_ids:
+        return {}
+    rows = await db.execute(
+        select(Message.conversation_id, func.count(Message.id))
+        .join(
+            ConversationMember,
+            (ConversationMember.conversation_id == Message.conversation_id)
+            & (ConversationMember.user_id == user_id),
+        )
+        .where(
+            Message.conversation_id.in_(conv_ids),
+            Message.sender_id != user_id,
+            Message.deleted_at.is_(None),
+            Message.id > func.coalesce(ConversationMember.last_read_message_id, 0),
+        )
+        .group_by(Message.conversation_id)
+    )
+    return {cid: n for cid, n in rows}
+
+
+async def list_conversations(
+    db: AsyncSession, me: User
+) -> list[tuple[Conversation, Message | None, int]]:
     convs = list(
         await db.scalars(
             select(Conversation)
@@ -111,14 +135,17 @@ async def list_conversations(db: AsyncSession, me: User) -> list[tuple[Conversat
         )
     )
     last = await _last_messages(db, [c.id for c in convs])
-    result = [(c, last.get(c.id)) for c in convs]
+    unread = await _unread_counts(db, me.id, [c.id for c in convs])
+    result = [(c, last.get(c.id), unread.get(c.id, 0)) for c in convs]
     result.sort(
         key=lambda t: (t[1].created_at if t[1] else t[0].created_at), reverse=True
     )
     return result
 
 
-async def get_conversation(db: AsyncSession, me: User, conv_id: int) -> tuple[Conversation, Message | None]:
+async def get_conversation(
+    db: AsyncSession, me: User, conv_id: int
+) -> tuple[Conversation, Message | None, int]:
     await require_member(db, conv_id, me.id)
     conv = await db.scalar(
         select(Conversation)
@@ -126,7 +153,8 @@ async def get_conversation(db: AsyncSession, me: User, conv_id: int) -> tuple[Co
         .options(selectinload(Conversation.members).selectinload(ConversationMember.user))
     )
     last = (await _last_messages(db, [conv_id])).get(conv_id)
-    return conv, last
+    unread = (await _unread_counts(db, me.id, [conv_id])).get(conv_id, 0)
+    return conv, last, unread
 
 
 async def add_member(db: AsyncSession, me: User, conv_id: int, user_id: int) -> None:
@@ -176,11 +204,13 @@ async def remove_member(db: AsyncSession, me: User, conv_id: int, user_id: int) 
 
 
 async def send_message(db: AsyncSession, me: User, conv_id: int, content: str) -> Message:
-    await require_member(db, conv_id, me.id)
+    mine = await require_member(db, conv_id, me.id)
     msg = Message(
         conversation_id=conv_id, sender_id=me.id, content=content, type=MessageType.text
     )
     db.add(msg)
+    await db.flush()
+    mine.last_read_message_id = msg.id  # sender has implicitly read their own message
     await db.commit()
     await db.refresh(msg)
     return msg
@@ -196,3 +226,17 @@ async def list_messages(
     if before is not None:
         q = q.where(Message.id < before)
     return list(await db.scalars(q.order_by(Message.id.desc()).limit(min(max(limit, 1), 100))))
+
+
+async def mark_read(db: AsyncSession, me: User, conv_id: int, message_id: int) -> int | None:
+    """Move the caller's read marker forward (never back). Returns the marker."""
+    mine = await require_member(db, conv_id, me.id)
+    in_conv = await db.scalar(
+        select(Message.id).where(Message.id == message_id, Message.conversation_id == conv_id)
+    )
+    if in_conv is None:
+        raise ChatError(404, "Message not found")
+    if mine.last_read_message_id is None or message_id > mine.last_read_message_id:
+        mine.last_read_message_id = message_id
+        await db.commit()
+    return mine.last_read_message_id
