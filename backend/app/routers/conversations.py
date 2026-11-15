@@ -76,6 +76,7 @@ async def add_member(
     me: User = Depends(get_current_user),
 ):
     await _call(chat.add_member(db, me, conv_id, data.user_id))
+    await notify.publish_membership(db, conv_id, "member_added", data.user_id)
     return {"message": "Member added"}
 
 
@@ -85,6 +86,9 @@ async def remove_member(
     me: User = Depends(get_current_user),
 ):
     await _call(chat.remove_member(db, me, conv_id, user_id))
+    await notify.publish_membership(
+        db, conv_id, "member_left" if user_id == me.id else "member_removed", user_id
+    )
 
 
 @router.post("/{conv_id}/messages", response_model=MessageOut, status_code=201)

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import GroupInfoDialog from '../components/GroupInfoDialog'
 import Composer from '../components/Composer'
 import MessageList from '../components/MessageList'
@@ -12,6 +12,7 @@ import { conversationTitle, useChat } from '../store/chat'
 import { typingText, useLive } from '../store/live'
 import { startLive } from '../ws/live'
 import { useConn } from '../ws/socket'
+import { toast } from '../store/toast'
 
 function useTheme() {
   const [theme, setTheme] = useState(() => {
@@ -68,7 +69,11 @@ function Conversation({ id }: { id: number }) {
   useEffect(() => {
     const onVis = () => void markRead(id).catch(() => {})
     document.addEventListener('visibilitychange', onVis)
-    return () => document.removeEventListener('visibilitychange', onVis)
+    window.addEventListener('focus', onVis)
+    return () => {
+      document.removeEventListener('visibilitychange', onVis)
+      window.removeEventListener('focus', onVis)
+    }
   }, [id, markRead])
 
   if (error === 'notfound' || (listLoaded && !conv))
@@ -173,6 +178,14 @@ export default function ChatPage() {
       document.title = 'NovaChat'
     }
   }, [unread])
+  const removedFrom = useChat((s) => s.removedFrom)
+  const navigate = useNavigate()
+  useEffect(() => {
+    if (!removedFrom) return
+    toast(`You are no longer a member of ${removedFrom.name}`)
+    useChat.getState().clearRemoved()
+    navigate('/', { replace: true })
+  }, [removedFrom, navigate])
   const down = useConn((s) => s.status === 'down')
 
   return (

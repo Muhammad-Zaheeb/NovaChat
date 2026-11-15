@@ -83,6 +83,29 @@ export function startLive(): () => void {
       })
     }),
   )
+  offs.push(
+    socket.on('conversation.updated', (e) => {
+      const me = useAuth.getState().user
+      const chat = useChat.getState()
+      if (e.user_id === me?.id && e.change !== 'member_added') {
+        const c = chat.conversations[e.conversation_id]
+        if (!c) return
+        if (chat.activeId === c.id)
+          useChat.setState({ removedFrom: { id: c.id, name: c.name ?? 'the group' } })
+        else if (e.change === 'member_removed')
+          toast(`You were removed from ${c.name ?? 'a group'}`)
+        chat.removeConversation(c.id)
+        return
+      }
+      if (e.user_id === me?.id) {
+        // I was added: the conversation appears in the sidebar.
+        void chat.loadConversations().catch(() => {})
+        return
+      }
+      if (chat.conversations[e.conversation_id])
+        void chat.loadDetail(e.conversation_id).catch(() => {})
+    }),
+  )
   offs.push(socket.on('error', (e) => toast(e.detail || 'Realtime error')))
   offs.push(socket.onClose(() => toast('Connection lost. Reconnecting…')))
   offs.push(socket.onOpen((re) => re && toast('Back online', 'info')))

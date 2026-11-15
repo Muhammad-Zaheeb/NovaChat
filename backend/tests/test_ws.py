@@ -160,3 +160,33 @@ async def test_presence_online_offline(ws_url, users):
         ev = await recv(a)
         assert ev["payload"] == {"user_id": bid, "online": False}
     assert conv
+
+
+async def recv_type(ws, type_, timeout=2):
+    """Next event of `type_`, skipping others (e.g. presence)."""
+    while True:
+        ev = await recv(ws, timeout)
+        if ev["type"] == type_:
+            return ev
+
+
+async def test_group_membership_events(ws_url, users):
+    a, b, c = users["alice"], users["bob"], users["carol"]
+    g = (await a.post("/conversations/group", json={"name": "G", "member_ids": [b.user_id]})).json()["id"]
+    async with open_ws(ws_url, a) as wa, open_ws(ws_url, b) as wb, open_ws(ws_url, c) as wc:
+        # add carol: members and the added user hear about it
+        assert (await a.post(f"/conversations/{g}/members", json={"user_id": c.user_id})).status_code == 201
+        for ws in (wa, wb, wc):
+            p = (await recv_type(ws, "conversation.updated"))["payload"]
+            assert p == {"conversation_id": g, "change": "member_added", "user_id": c.user_id}
+        # remove carol: she still hears it (she was just removed)
+        assert (await a.delete(f"/conversations/{g}/members/{c.user_id}")).status_code == 204
+        for ws in (wa, wb, wc):
+            p = (await recv_type(ws, "conversation.updated"))["payload"]
+            assert p["change"] == "member_removed" and p["user_id"] == c.user_id
+        # bob leaves: remaining member and bob are told
+        assert (await b.delete(f"/conversations/{g}/members/{b.user_id}")).status_code == 204
+        for ws in (wa, wb):
+            p = (await recv_type(ws, "conversation.updated"))["payload"]
+            assert p["change"] == "member_left" and p["user_id"] == b.user_id
+        await silent(wc)

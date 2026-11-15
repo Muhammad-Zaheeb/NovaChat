@@ -27,7 +27,7 @@ export default function GroupInfoDialog({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  // The backend does not broadcast membership changes, so refresh on open.
+  // Membership changes also arrive live (conversation.updated); refresh on open too.
   useEffect(() => {
     loadDetail(convId).catch(() => setError('Could not refresh members'))
   }, [convId, loadDetail])

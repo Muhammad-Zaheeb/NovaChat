@@ -15,6 +15,7 @@ PING = "ping"
 MESSAGE_NEW = "message.new"
 TYPING = "typing"
 PRESENCE = "presence"
+CONVERSATION_UPDATED = "conversation.updated"
 ERROR = "error"
 PONG = "pong"
 

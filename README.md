@@ -103,6 +103,7 @@ All frames are JSON: `{"type": "<event>", "payload": {...}}`. Bad input gets an 
 | `typing` | `conversation_id, user_id, is_typing` (not sent to the typer) |
 | `message.read` | `conversation_id, user_id, message_id` (all members) |
 | `presence` | `user_id, online` (users sharing a conversation; fired on first connect / last disconnect) |
+| `conversation.updated` | `conversation_id, change` (`member_added` \| `member_removed` \| `member_left`), `user_id` (the affected user). Sent to all remaining members **and** the affected user, so an added user can load the conversation and a removed one can drop it. |
 | `error` | `code` (`invalid_payload`, `bad_request`, `unknown_event`, `not_found`, `forbidden`…), `detail` |
 | `pong` | none |
 

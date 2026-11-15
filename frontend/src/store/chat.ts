@@ -2,6 +2,10 @@ import { create } from 'zustand'
 import * as socket from '../ws/socket'
 import { chatApi, type Conversation, type ConversationDetail, type Message } from '../api'
 
+/** The user can actually see this window: visible AND focused (two windows side by side are both visible). */
+export const isAttentive = () =>
+  document.visibilityState === 'visible' && document.hasFocus()
+
 const PAGE = 50
 const ECHO_TIMEOUT_MS = 10_000
 
@@ -29,6 +33,9 @@ interface ChatState {
   /** conversation currently open in the UI */
   activeId: number | null
   setActive: (id: number | null) => void
+  /** Set when the viewer was removed from the open conversation; ChatPage navigates away. */
+  removedFrom: { id: number; name: string } | null
+  clearRemoved: () => void
 
   loadConversations: () => Promise<void>
   loadDetail: (id: number) => Promise<void>
@@ -63,6 +70,8 @@ export const useChat = create<ChatState>((set, get) => ({
   pending: {},
   activeId: null,
   setActive: (id) => set({ activeId: id }),
+  removedFrom: null,
+  clearRemoved: () => set({ removedFrom: null }),
 
   loadConversations: async () => {
     const list = await chatApi.list()
@@ -192,7 +201,7 @@ export const useChat = create<ChatState>((set, get) => ({
       void s.loadConversations().catch(() => {})
       return
     }
-    const visible = document.visibilityState === 'visible'
+    const visible = isAttentive()
     s.receiveMessage(m, {
       own: m.sender_id === meId,
       active: s.activeId === m.conversation_id && visible,
@@ -234,7 +243,7 @@ export const useChat = create<ChatState>((set, get) => ({
   markRead: async (id) => {
     const conv = get().conversations[id]
     const last = get().threads[id]?.items.at(-1)
-    if (!conv || !last || document.visibilityState !== 'visible') return
+    if (!conv || !last || !isAttentive()) return
     if (conv.unread_count > 0) {
       set((s) => ({
         conversations: {

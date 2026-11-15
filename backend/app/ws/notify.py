@@ -43,3 +43,18 @@ async def publish_presence(db: AsyncSession, user_id: int, online: bool) -> None
         await chat.peer_ids(db, user_id),
         events.event(events.PRESENCE, {"user_id": user_id, "online": online}),
     )
+
+
+async def publish_membership(
+    db: AsyncSession, conv_id: int, change: str, user_id: int
+) -> None:
+    """`change` is member_added | member_removed | member_left. Goes to everyone who is
+    still a member plus the affected user (who may no longer be one)."""
+    targets = set(await chat.member_ids(db, conv_id)) | {user_id}
+    await manager.send_to_users(
+        list(targets),
+        events.event(
+            events.CONVERSATION_UPDATED,
+            {"conversation_id": conv_id, "change": change, "user_id": user_id},
+        ),
+    )
