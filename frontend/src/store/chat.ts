@@ -15,6 +15,9 @@ interface ChatState {
   details: Record<number, ConversationDetail>
   threads: Record<number, Thread>
   listLoaded: boolean
+  /** conversation currently open in the UI */
+  activeId: number | null
+  setActive: (id: number | null) => void
 
   loadConversations: () => Promise<void>
   loadDetail: (id: number) => Promise<void>
@@ -40,6 +43,8 @@ export const useChat = create<ChatState>((set, get) => ({
   details: {},
   threads: {},
   listLoaded: false,
+  activeId: null,
+  setActive: (id) => set({ activeId: id }),
 
   loadConversations: async () => {
     const list = await chatApi.list()
@@ -150,7 +155,7 @@ export const useChat = create<ChatState>((set, get) => ({
     await chatApi.read(id, last.id)
   },
 
-  reset: () => set({ conversations: {}, details: {}, threads: {}, listLoaded: false }),
+  reset: () => set({ conversations: {}, details: {}, threads: {}, listLoaded: false, activeId: null }),
 }))
 
 /** Display name for a conversation from the viewer's perspective. */

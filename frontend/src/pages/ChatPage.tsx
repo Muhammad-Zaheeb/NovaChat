@@ -6,6 +6,8 @@ import Sidebar from '../components/Sidebar'
 import { Avatar } from '../components/ui'
 import { useAuth } from '../store/auth'
 import { conversationTitle, useChat } from '../store/chat'
+import { startLive } from '../ws/live'
+import { useConn } from '../ws/socket'
 
 function useTheme() {
   const [theme, setTheme] = useState(() => {
@@ -34,8 +36,13 @@ function Conversation({ id }: { id: number }) {
   const conv = useChat((s) => s.conversations[id])
   const detail = useChat((s) => s.details[id])
   const lastId = useChat((s) => s.threads[id]?.items.at(-1)?.id)
-  const { openConversation, markRead, listLoaded } = useChat()
+  const { openConversation, markRead, listLoaded, setActive } = useChat()
   const [error, setError] = useState(false)
+
+  useEffect(() => {
+    setActive(id)
+    return () => setActive(null)
+  }, [id, setActive])
 
   useEffect(() => {
     openConversation(id).catch(() => setError(true))
@@ -93,9 +100,16 @@ export default function ChatPage() {
   const { theme, toggle } = useTheme()
   const reset = useChat((s) => s.reset)
   useEffect(() => reset, [reset])
+  useEffect(() => startLive(), [])
+  const down = useConn((s) => s.status === 'down')
 
   return (
-    <div className="flex h-full">
+    <div className="relative flex h-full">
+      {down && (
+        <div className="absolute inset-x-0 top-0 z-20 bg-amber-500 py-0.5 text-center text-xs font-medium text-white">
+          Reconnecting…
+        </div>
+      )}
       <div className={`${id ? 'hidden md:flex' : 'flex'} h-full w-full md:w-auto`}>
         <Sidebar theme={theme} toggleTheme={toggle} />
       </div>
