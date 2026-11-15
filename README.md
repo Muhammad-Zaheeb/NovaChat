@@ -58,5 +58,12 @@ alembic upgrade head        # create tables
 uvicorn app.main:app --reload
 ```
 
+Run tests (uses a separate `novachat_test` database; never touches `novachat`):
+
+```bash
+createdb novachat_test      # once
+python -m pytest
+```
+
 API runs at http://localhost:8000 (docs at `/docs`, DB check at `/health`).
-Endpoints: `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`.
+Endpoints: `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `GET /users/search`, plus `/conversations` (direct/group chats, members, messages, read receipts and unread counts).
