@@ -28,7 +28,7 @@ export default function App() {
         <Route
           path="*"
           element={
-            <div className="flex h-full">
+            <div className="flex h-full bg-bg">
               <NotFound />
             </div>
           }

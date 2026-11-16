@@ -1,19 +1,23 @@
 import { Link } from 'react-router-dom'
+import { ArrowLeft, Compass } from 'lucide-react'
+import { EmptyState } from './ui'
 
 export default function NotFound({ message = 'Page not found' }: { message?: string }) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-      <p className="text-5xl font-bold text-brand-600 dark:text-indigo-400">404</p>
-      <h1 className="text-lg font-semibold">{message}</h1>
-      <p className="text-sm text-slate-600 dark:text-slate-400">
-        It may not exist, or you may not be a member.
-      </p>
-      <Link
-        to="/"
-        className="inline-flex h-10 items-center rounded-lg bg-brand-600 px-4 text-sm font-medium text-white hover:bg-brand-700"
-      >
-        Back to chats
-      </Link>
-    </div>
+    <EmptyState
+      icon={Compass}
+      title={message}
+      className="flex-1"
+      action={
+        <Link
+          to="/"
+          className="inline-flex h-10 items-center gap-2 rounded-md bg-accent px-4 text-sm font-medium text-accent-fg shadow-sm hover:bg-accent-hover"
+        >
+          <ArrowLeft size={16} aria-hidden /> Back to chats
+        </Link>
+      }
+    >
+      The link may be broken, or you may no longer be a member of this conversation.
+    </EmptyState>
   )
 }

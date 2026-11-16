@@ -1,4 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { RotateCw, TriangleAlert } from 'lucide-react'
+import { Button, EmptyState } from './ui'
 
 export default class ErrorBoundary extends Component<
   { children: ReactNode },
@@ -14,17 +16,20 @@ export default class ErrorBoundary extends Component<
   render() {
     if (!this.state.failed) return this.props.children
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-        <h1 className="text-xl font-semibold">Something went wrong</h1>
-        <p className="text-sm text-slate-600 dark:text-slate-400">
-          An unexpected error occurred. Reloading usually fixes it.
-        </p>
-        <button
-          onClick={() => location.reload()}
-          className="h-10 rounded-lg bg-brand-600 px-4 text-sm font-medium text-white hover:bg-brand-700"
+      <div className="flex h-full bg-bg">
+        <EmptyState
+          icon={TriangleAlert}
+          title="Something went wrong"
+          className="flex-1"
+          action={
+            <Button icon={RotateCw} onClick={() => location.reload()}>
+              Reload NovaChat
+            </Button>
+          }
         >
-          Reload
-        </button>
+          An unexpected error stopped this screen. Reloading usually fixes it; your
+          messages are safe.
+        </EmptyState>
       </div>
     )
   }
