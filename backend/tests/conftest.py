@@ -34,7 +34,7 @@ async def _clean():
     yield
     async with engine.begin() as conn:
         await conn.execute(
-            text("TRUNCATE users, email_verification_codes, friendships, conversations, conversation_members, messages, attachments RESTART IDENTITY CASCADE")
+            text("TRUNCATE users, email_verification_codes, password_reset_codes, friendships, conversations, conversation_members, messages, attachments RESTART IDENTITY CASCADE")
         )
 
 

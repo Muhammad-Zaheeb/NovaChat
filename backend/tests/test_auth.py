@@ -121,3 +121,70 @@ async def test_email_normalised_and_disposable_rejected(client):
     assert (await client.post("/auth/login", json={"email": "ALICE@EXAMPLE.com", "password": REG["password"]})).status_code == 200
     r = await client.post("/auth/register", json={**REG, "username": "xyz", "email": "x@mailinator.com"})
     assert r.status_code == 400
+
+
+# ---- forgot / reset password ----
+from tests.conftest import make_client, register_login  # noqa: E402
+from app.core import email as _mailer  # noqa: E402
+
+
+def _reset_codes(email):
+    return [m["code"] for m in _mailer.outbox if m["to"] == email and "reset" in m["subject"]]
+
+
+async def test_forgot_password_no_enumeration(client):
+    r1 = await client.post("/auth/forgot-password", json={"email": "nobody@example.com"})
+    await register_login("alice")
+    r2 = await client.post("/auth/forgot-password", json={"email": "alice@example.com"})
+    assert r1.status_code == r2.status_code == 200 and r1.json() == r2.json()
+    assert not _reset_codes("nobody@example.com") and len(_reset_codes("alice@example.com")) == 1
+    # resend cooldown applies silently
+    r3 = await client.post("/auth/forgot-password", json={"email": "alice@example.com"})
+    assert r3.status_code == 200 and len(_reset_codes("alice@example.com")) == 1
+
+
+async def test_reset_password_flow_revokes_sessions():
+    old = await register_login("alice")
+    assert (await old.get("/auth/me")).status_code == 200
+    async with make_client() as c:
+        await c.post("/auth/forgot-password", json={"email": "alice@example.com"})
+        code = _reset_codes("alice@example.com")[-1]
+        body = {"email": "alice@example.com", "code": code, "new_password": "brandnewpass1"}
+        assert (await c.post("/auth/reset-password", json=body)).status_code == 200
+        assert (await c.post("/auth/reset-password", json=body)).status_code == 400  # single use
+        assert (await c.post("/auth/login", json={"email": "alice@example.com", "password": "password123"})).status_code == 401
+        assert (await c.post("/auth/login", json={"email": "alice@example.com", "password": "brandnewpass1"})).status_code == 200
+        assert (await c.get("/auth/me")).status_code == 200
+    assert (await old.get("/auth/me")).status_code == 401
+    await old.aclose()
+
+
+async def test_reset_password_bad_and_expired_codes(client):
+    await register_login("alice")
+    await client.post("/auth/forgot-password", json={"email": "alice@example.com"})
+    code = _reset_codes("alice@example.com")[-1]
+    wrong = "000000" if code != "000000" else "111111"
+    body = {"email": "alice@example.com", "code": wrong, "new_password": "brandnewpass1"}
+    for _ in range(5):
+        assert (await client.post("/auth/reset-password", json=body)).status_code == 400
+    # attempts exhausted: even the right code fails
+    assert (await client.post("/auth/reset-password", json={**body, "code": code})).status_code == 400
+    assert (await client.post("/auth/reset-password", json={**body, "email": "x@example.com"})).status_code == 400
+    # a verification code is not a reset code
+    from tests.conftest import last_code
+    assert (await client.post("/auth/reset-password", json={**body, "code": last_code("alice@example.com")})).status_code == 400
+
+
+async def test_reset_code_expires(client):
+    from datetime import datetime, timedelta, timezone
+    from sqlalchemy import update
+    from app.database.engine import SessionLocal
+    from app.models.user import PasswordResetCode
+    await register_login("alice")
+    await client.post("/auth/forgot-password", json={"email": "alice@example.com"})
+    code = _reset_codes("alice@example.com")[-1]
+    async with SessionLocal() as db:
+        await db.execute(update(PasswordResetCode).values(expires_at=datetime.now(timezone.utc) - timedelta(seconds=1)))
+        await db.commit()
+    r = await client.post("/auth/reset-password", json={"email": "alice@example.com", "code": code, "new_password": "brandnewpass1"})
+    assert r.status_code == 400

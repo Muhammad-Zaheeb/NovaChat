@@ -10,7 +10,14 @@ from app.core.security import create_access_token, hash_password, verify_passwor
 from app.database.session import get_db
 from app.dependencies import COOKIE_NAME, get_current_user
 from app.models.user import User
-from app.schemas.auth import LoginRequest, RegisterRequest, ResendCodeRequest, VerifyEmailRequest
+from app.schemas.auth import (
+    ForgotPasswordRequest,
+    LoginRequest,
+    RegisterRequest,
+    ResendCodeRequest,
+    ResetPasswordRequest,
+    VerifyEmailRequest,
+)
 from app.schemas.user import UserOut
 from app.services import verification
 
@@ -74,6 +81,31 @@ async def resend_code(
     return {"message": "If the account exists and is unverified, a new code was sent"}
 
 
+@router.post("/forgot-password")
+async def forgot_password(
+    data: ForgotPasswordRequest, background: BackgroundTasks, db: AsyncSession = Depends(get_db)
+):
+    """Always 200: never reveals whether the email has an account (or hit a resend limit)."""
+    user = await db.scalar(select(User).where(User.email == data.email.lower()))
+    if user is not None:
+        try:
+            code = await verification.issue_reset_code(db, user)
+            background.add_task(mailer.send_password_reset_code, user.email, user.username, code)
+        except verification.VerifyError:
+            pass
+    return {"message": "If that email has an account, a reset code was sent"}
+
+
+@router.post("/reset-password")
+async def reset_password(data: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    user = await db.scalar(select(User).where(User.email == data.email.lower()))
+    try:
+        await verification.reset_password(db, user, data.code, data.new_password)
+    except verification.VerifyError as e:
+        raise HTTPException(status_code=e.status, detail=e.detail)
+    return {"message": "Password changed"}
+
+
 @router.post("/login")
 async def login(data: LoginRequest, response: Response, db: AsyncSession = Depends(get_db)):
     user = await db.scalar(select(User).where(User.email == data.email.lower()))
@@ -84,7 +116,7 @@ async def login(data: LoginRequest, response: Response, db: AsyncSession = Depen
 
     response.set_cookie(
         key=COOKIE_NAME,
-        value=create_access_token({"user_id": user.id}),
+        value=create_access_token({"user_id": user.id, "tv": user.token_version or 0}),
         httponly=True,
         secure=settings.COOKIE_SECURE,
         samesite="lax",

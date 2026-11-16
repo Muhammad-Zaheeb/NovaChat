@@ -54,3 +54,18 @@ def send_verification_code(to: str, username: str, code: str) -> None:
         "you can ignore this email.</p><p>— NovaChat</p>"
     )
     send_email(to, "Your NovaChat verification code", text, html, code=code)
+
+
+def send_password_reset_code(to: str, username: str, code: str) -> None:
+    text = (
+        f"Hi {username},\n\nYour NovaChat password reset code is: {code}\n\n"
+        "It expires in 15 minutes. If you didn't ask to reset your password, "
+        "you can ignore this email; your password has not changed.\n\n— NovaChat"
+    )
+    html = (
+        f"<p>Hi {username},</p><p>Your NovaChat password reset code is:</p>"
+        f"<p style=\"font-size:28px;font-weight:bold;letter-spacing:4px\">{code}</p>"
+        "<p>It expires in 15 minutes. If you didn't ask to reset your password, "
+        "you can ignore this email; your password has not changed.</p><p>— NovaChat</p>"
+    )
+    send_email(to, "Your NovaChat password reset code", text, html, code=code)

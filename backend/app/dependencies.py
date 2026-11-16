@@ -14,12 +14,16 @@ async def user_from_token(db: AsyncSession, token: str | None) -> User:
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
-        user_id = int(decode_token(token).get("user_id"))
+        payload = decode_token(token)
+        user_id = int(payload.get("user_id"))
+        version = int(payload.get("tv", 0))
     except (jwt.PyJWTError, TypeError, ValueError):
         raise HTTPException(status_code=401, detail="Invalid token")
     user = await db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=401, detail="User not found")
+    if version != (user.token_version or 0):
+        raise HTTPException(status_code=401, detail="Session expired")
     return user
 
 

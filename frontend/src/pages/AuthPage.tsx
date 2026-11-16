@@ -163,6 +163,13 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
             />
           }
         />
+        {!isRegister && (
+          <div className="-mt-1 text-right text-sm">
+            <Link to="/forgot-password" state={{ email }} className={linkCls}>
+              Forgot password?
+            </Link>
+          </div>
+        )}
         <Button type="submit" size="lg" loading={busy} className="w-full">
           {isRegister ? 'Create account' : 'Sign in'}
         </Button>

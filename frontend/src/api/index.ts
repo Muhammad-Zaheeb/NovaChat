@@ -20,6 +20,9 @@ export const authApi = {
   verifyEmail: (email: string, code: string) =>
     api.post('/auth/verify-email', { email, code }),
   resendCode: (email: string) => api.post('/auth/resend-code', { email }),
+  forgotPassword: (email: string) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (email: string, code: string, new_password: string) =>
+    api.post('/auth/reset-password', { email, code, new_password }),
   logout: () => api.post('/auth/logout'),
   me: () => api.get<User>('/auth/me').then((r) => r.data),
   setAvatar: (file: Blob) => {
