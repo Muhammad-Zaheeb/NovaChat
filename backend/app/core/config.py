@@ -60,6 +60,9 @@ class Settings(BaseSettings):
     S3_PUBLIC_BASE_URL: str = ""  # optional: serve avatars straight from a public bucket/CDN
     UPLOADS_PER_MINUTE: int = 30
 
+    SENTRY_DSN: str = ""  # empty = error tracking off
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.0
+
     @property
     def is_production(self) -> bool:
         return self.ENV.lower() == "production"

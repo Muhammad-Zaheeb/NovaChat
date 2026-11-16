@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from app.core.config import settings
+from app.core.observability import init_sentry
 from app.core.security_headers import SecurityHeadersMiddleware
 from app.routers import auth, conversations, files, friends, health, users
 from app.ws.router import router as ws_router
@@ -16,6 +17,8 @@ if settings.is_production:
     problems = settings.check_production()
     if problems:
         raise RuntimeError("Unsafe production configuration: " + "; ".join(problems))
+
+init_sentry()
 
 # Everything the app serves from code lives under /api (REST, /api/ws, /api/docs); the built
 # frontend owns every other path. One origin, so cookies and the WebSocket need no CORS.

@@ -44,3 +44,5 @@ services:
         sync: false
       - key: SENTRY_DSN
         sync: false
+      - key: VITE_SENTRY_DSN     # build-time, browser errors (optional)
+        sync: false
