@@ -28,3 +28,6 @@ export function lastSeenText(iso?: string | null): string {
   if (hrs < 48) return 'last seen yesterday'
   return `last seen ${new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric' })}`
 }
+
+/** Messages can be edited for this long after sending (matches the backend). */
+export const EDIT_MS = 15 * 60 * 1000

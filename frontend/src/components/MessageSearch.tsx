@@ -1,9 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { Search, X } from 'lucide-react'
 import { chatApi, errorMessage, type Message } from '../api'
 import { clockTime, dayLabel } from '../lib'
 import { useChat } from '../store/chat'
 import { toast } from '../store/toast'
-import { Input } from './ui'
+import { IconButton, Input, Spinner } from './ui'
 
 function highlight(text: string, q: string): ReactNode {
   const i = text.toLowerCase().indexOf(q.toLowerCase())
@@ -11,7 +12,7 @@ function highlight(text: string, q: string): ReactNode {
   return (
     <>
       {text.slice(0, i)}
-      <mark className="rounded bg-yellow-300 text-black">
+      <mark className="rounded-sm bg-(--highlight) text-fg">
         {text.slice(i, i + q.length)}
       </mark>
       {text.slice(i + q.length)}
@@ -19,7 +20,7 @@ function highlight(text: string, q: string): ReactNode {
   )
 }
 
-/** Search within one conversation; clicking a result scrolls to (and flashes) that message. */
+/** Search within one conversation; picking a result scrolls to (and flashes) that message. */
 export default function MessageSearch({
   convId,
   names,
@@ -30,7 +31,7 @@ export default function MessageSearch({
   onClose: () => void
 }) {
   const [q, setQ] = useState('')
-  const [results, setResults] = useState<Message[] | null>(null)
+  const [results, setResults] = useState<{ term: string; items: Message[] } | null>(null)
   const jumpTo = useChat((s) => s.jumpTo)
 
   useEffect(() => {
@@ -40,7 +41,7 @@ export default function MessageSearch({
     const t = setTimeout(() => {
       chatApi
         .search(convId, term)
-        .then((r) => !stale && setResults(r))
+        .then((r) => !stale && setResults({ term, items: r }))
         .catch((e) => toast(errorMessage(e, 'Search failed')))
     }, 250)
     return () => {
@@ -49,43 +50,48 @@ export default function MessageSearch({
     }
   }, [q, convId])
 
+  const term = q.trim()
+  const loading = !!term && results?.term !== term
   return (
-    <div className="border-b border-slate-200 p-2 dark:border-slate-800">
+    <div className="shrink-0 border-b border-line bg-surface px-3 py-2 animate-fade-in md:px-4">
       <div className="flex items-center gap-2">
-        <Input
-          autoFocus
-          aria-label="Search messages"
-          placeholder="Search this conversation…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => e.key === 'Escape' && onClose()}
-        />
-        <button
-          onClick={onClose}
-          aria-label="Close search"
-          className="h-10 w-10 rounded-lg"
-        >
-          ✕
-        </button>
+        <div className="flex-1">
+          <Input
+            autoFocus
+            icon={Search}
+            aria-label="Search this conversation"
+            placeholder="Search this conversation"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => e.key === 'Escape' && onClose()}
+            trailing={
+              loading ? <Spinner size={14} className="mr-2 text-subtle" /> : undefined
+            }
+          />
+        </div>
+        <IconButton label="Close search" icon={X} tooltip={false} onClick={onClose} />
       </div>
-      {q.trim() && results && (
-        <ul className="mt-2 max-h-56 overflow-y-auto text-sm">
-          {results.length === 0 && (
-            <li className="p-2 text-slate-500 dark:text-slate-400">No messages found</li>
+      {term && results && (
+        <ul className="mt-2 max-h-64 overflow-y-auto" aria-label="Search results">
+          {results.items.length === 0 && !loading && (
+            <li className="px-2 py-3 text-sm text-muted">No messages match “{term}”.</li>
           )}
-          {results.map((m) => (
+          {results.items.map((m) => (
             <li key={m.id}>
               <button
+                type="button"
                 onClick={async () => {
                   if (!(await jumpTo(convId, m.id))) toast('Could not find that message')
                 }}
-                className="block w-full rounded px-2 py-1.5 text-left hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="block w-full cursor-pointer rounded-md px-2 py-2 text-left hover:bg-surface-2"
               >
-                <span className="text-xs text-slate-500 dark:text-slate-400">
-                  {names[m.sender_id] ?? 'Unknown'} · {dayLabel(m.created_at)}{' '}
+                <span className="block text-xs text-subtle tabular-nums">
+                  {names[m.sender_id] ?? 'Former member'} · {dayLabel(m.created_at)},{' '}
                   {clockTime(m.created_at)}
                 </span>
-                <span className="block truncate">{highlight(m.content, q.trim())}</span>
+                <span className="block truncate text-sm text-fg">
+                  {highlight(m.content, results.term)}
+                </span>
               </button>
             </li>
           ))}

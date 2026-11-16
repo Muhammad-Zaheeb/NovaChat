@@ -68,7 +68,9 @@ export default function AuthLayout({
             ))}
           </ul>
         </div>
-        <p className="text-xs text-subtle">Real-time chat, built with FastAPI and React.</p>
+        <p className="text-xs text-subtle">
+          Real-time chat, built with FastAPI and React.
+        </p>
       </aside>
       <main className="flex flex-1 flex-col items-center justify-center px-4 py-10 sm:px-8">
         <div className="w-full max-w-sm animate-rise-in">
