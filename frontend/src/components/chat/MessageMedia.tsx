@@ -14,7 +14,10 @@ import { mediaUrl } from '../../store/avatars'
 import { cn } from '../ui'
 import VoicePlayer from './VoicePlayer'
 
-const download = (a: Attachment) => `${mediaUrl(a.url)}?download=1`
+const download = (a: Attachment) => {
+  const u = mediaUrl(a.url)
+  return `${u}${u.includes('?') ? '&' : '?'}download=1`
+}
 
 /** Full-screen image viewer: arrows / ←→ to move, Esc to close, download button. */
 function Viewer({

@@ -22,12 +22,20 @@ export default function AvatarCropDialog({
   const drag = useRef<{ x: number; y: number; px: number; py: number } | null>(null)
 
   useEffect(() => {
+    // `alive` stops a load started by an earlier run (React StrictMode runs effects
+    // twice in dev) from reporting the error caused by its URL being revoked.
+    let alive = true
+    setImg(null)
+    setError(false)
     const url = URL.createObjectURL(file)
     const i = new Image()
-    i.onload = () => setImg(i)
-    i.onerror = () => setError(true)
+    i.onload = () => alive && setImg(i)
+    i.onerror = () => alive && setError(true)
     i.src = url
-    return () => URL.revokeObjectURL(url)
+    return () => {
+      alive = false
+      URL.revokeObjectURL(url)
+    }
   }, [file])
 
   const base = img ? VIEW / Math.min(img.naturalWidth, img.naturalHeight) : 1
@@ -72,7 +80,7 @@ export default function AvatarCropDialog({
           <Button variant="ghost" onClick={onCancel}>
             Cancel
           </Button>
-          <Button onClick={() => void save()} loading={busy} disabled={!img}>
+          <Button onClick={() => void save()} loading={busy} disabled={!img || error}>
             Save picture
           </Button>
         </>

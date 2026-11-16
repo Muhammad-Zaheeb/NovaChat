@@ -1,5 +1,6 @@
 """Chat business logic. Raises ChatError (no HTTP types) so it can be reused
 from WebSocket handlers; routers translate to HTTP."""
+import hashlib
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import delete, func, select
@@ -316,11 +317,14 @@ REACTIONS = ("👍", "❤️", "😂", "😮", "😢", "🙏")
 
 
 def attachment_out(a: Attachment) -> AttachmentOut:
+    # `v` ties the URL to the stored file, so a browser cache entry can never be served
+    # for a different file that later gets the same id (e.g. after a database restore).
+    v = hashlib.sha256(a.storage_key.encode()).hexdigest()[:12]
     base = f"/files/attachments/{a.id}"
     return AttachmentOut(
         id=a.id, kind=a.kind.value, mime=a.mime, size=a.size, original_name=a.original_name,
-        width=a.width, height=a.height, duration=a.duration, url=base,
-        thumb_url=f"{base}?thumb=1" if a.thumb_key else None,
+        width=a.width, height=a.height, duration=a.duration, url=f"{base}?v={v}",
+        thumb_url=f"{base}?thumb=1&v={v}" if a.thumb_key else None,
     )
 
 

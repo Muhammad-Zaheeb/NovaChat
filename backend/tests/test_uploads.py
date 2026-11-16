@@ -172,7 +172,7 @@ async def test_inline_for_media_and_range_requests(users):
     assert r.status_code == 206 and r.content == data[-16:]
     assert (await bob.get(a["url"], headers={"Range": "bytes=99999-"})).status_code == 416
     assert (await bob.get(a["url"], headers={"Range": "bytes=abc"})).status_code == 416
-    assert (await bob.get(a["url"] + "?download=1")).headers["content-disposition"].startswith("attachment;")
+    assert (await bob.get(a["url"] + "&download=1")).headers["content-disposition"].startswith("attachment;")
 
 
 async def test_voice_message(users):
@@ -231,3 +231,13 @@ async def test_reply_preview_carries_attachment(users):
     assert r.json()["reply_to"]["attachments"][0]["kind"] == "image"
     lst = (await users["bob"].get("/conversations")).json()
     assert lst[0]["last_message"]["content"] == "nice"
+
+
+async def test_attachment_urls_are_versioned_by_file(users):
+    """Same id after a DB reset must not reuse a cached URL: the URL carries a file-bound version."""
+    conv = await dm(users)
+    a = (await upload(users["alice"], png(), "a.png", "image/png")).json()
+    assert "?v=" in a["url"] and "v=" in (a["thumb_url"] or a["url"])
+    d = await users["alice"].get(a["url"] + "&download=1")
+    assert d.status_code == 200 and d.headers["content-disposition"].startswith("attachment")
+    assert conv

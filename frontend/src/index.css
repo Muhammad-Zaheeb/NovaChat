@@ -87,6 +87,9 @@ body {
 #root {
   height: 100%;
   height: 100dvh;
+  /* Invisible tooltips on edge icons extend past the viewport; without this the whole
+     app can be dragged sideways on phones. `clip` (not `hidden`) keeps sticky positioning. */
+  overflow-x: clip;
 }
 body {
   background: var(--bg);
