@@ -72,8 +72,8 @@ createdb novachat_test      # once
 python -m pytest
 ```
 
-API runs at http://localhost:8000 (docs at `/docs`, DB check at `/health`).
-Endpoints: `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `GET /users/search`, plus `/conversations` (direct/group chats, members, messages, read receipts and unread counts).
+API runs at http://localhost:8000. **All API routes live under `/api`** (docs at `/api/docs` in development, liveness `/api/health`, DB check `/api/health/db`); the examples below omit the `/api` prefix. If `frontend/dist` exists the same server also serves the built app at `/`.
+Auth: `POST /auth/register`, `/auth/verify-email`, `/auth/resend-code`, `/auth/login`, `/auth/logout`, `GET /auth/me`, `POST /auth/forgot-password {email}` (always 200) and `POST /auth/reset-password {email, code, new_password}` (code valid 15 min, 5 attempts; a reset signs out every existing session). Auth endpoints are rate limited per IP and per email (429 + `Retry-After`). Also `GET /users/search` and `/conversations`.
 
 ## Run locally (frontend)
 
@@ -85,7 +85,7 @@ npm install
 npm run dev      # http://localhost:5173
 ```
 
-The dev server proxies `/api` (prefix stripped) and `/ws` to the backend, so the browser sees a single origin and the auth cookie works without extra CORS setup. Other scripts: `npm run build`, `npm run lint`, `npm run format`.
+The dev server proxies `/api` (REST and the `/api/ws` WebSocket, prefix kept) to the backend, so the browser sees a single origin and the auth cookie works without extra CORS setup. Other scripts: `npm run build`, `npm run lint`, `npm run format`.
 
 ## Email setup (Gmail)
 
@@ -113,7 +113,7 @@ Rules: `POST /conversations/direct` to a non-friend → 403 `not_friends` (an al
 
 ## WebSocket protocol
 
-Connect to `ws(s)://<host>/ws`. The browser sends the same `access_token` cookie as the REST API (use `credentials: "include"` semantics, i.e. log in first). Missing/invalid cookie → rejected (close code 4401); disallowed `Origin` → rejected (4403).
+Connect to `ws(s)://<host>/api/ws`. The browser sends the same `access_token` cookie as the REST API (use `credentials: "include"` semantics, i.e. log in first). Missing/invalid cookie → rejected (close code 4401); disallowed `Origin` → rejected (4403).
 
 All frames are JSON: `{"type": "<event>", "payload": {...}}`. Bad input gets an `error` event; the socket stays open.
 
@@ -148,4 +148,63 @@ All frames are JSON: `{"type": "<event>", "payload": {...}}`. Bad input gets an 
 
 REST for the message features: `PATCH /conversations/{id}/messages/{mid}` `{content}` (own, within 15 min), `DELETE …/{mid}` (own), `POST …/{mid}/reactions` `{emoji}` (toggle; 👍 ❤️ 😂 😮 😢 🙏), `GET …/messages?q=text` (ILIKE search), `PUT /conversations/{id}/mute` `{muted}`, `PATCH /users/me` `{display_name, bio}`. Load initial presence with `GET /users/online?ids=1,2,3`.
 
-Limit: connections are held in-process, so this works with a single server process; Redis pub/sub replaces it at deploy time.
+Limit: connections (and the rate limiter) are held in-process, so run a single server process; Redis would replace both to scale out.
+
+## Deploy (free)
+
+Everything below is free and needs no credit card. One Render web service serves the API and the built frontend on a single origin; data lives in Neon (Postgres) and Supabase Storage (files). Do the steps in order and keep a scratch note of the values.
+
+### 1. Neon (database)
+1. Sign up at <https://neon.tech> → create a project (pick the region closest to you).
+2. Dashboard → **Connect** → turn **off** "Connection pooling" → copy the connection string (`postgresql://…?sslmode=require`). This is `DATABASE_URL`. Paste it as-is; the app converts it for asyncpg. Use the direct (non `-pooler`) host so migrations work.
+
+### 2. Supabase Storage (files)
+1. Sign up at <https://supabase.com> → new project.
+2. **Storage** → New bucket → name it (e.g. `novachat`) → keep **Public bucket OFF** (private).
+3. Project Settings → **Storage** → *S3 connection*: copy the **Endpoint** (`S3_ENDPOINT_URL`) and **Region** (`S3_REGION`), then **New access key** and copy the Access key ID and Secret (`S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`). `S3_BUCKET` is the bucket name.
+
+### 3. Email
+Render's free tier blocks outbound SMTP, so use **Brevo** (HTTP API, 300 emails/day free): <https://www.brevo.com> → sign up → *Senders, Domains & Dedicated IPs* → add and verify a sender address (your Gmail works) → *SMTP & API* → **API keys** → create one. Set `EMAIL_BACKEND=brevo`, `BREVO_API_KEY=…`, `EMAIL_FROM=NovaChat <the verified address>`.
+Gmail SMTP (see "Email setup" above) works on hosts that allow port 587; if used, `EMAIL_BACKEND=smtp` plus the `SMTP_*` variables.
+
+### 4. Sentry (optional)
+<https://sentry.io> → new project → Python/FastAPI → copy the DSN (`SENTRY_DSN`). Create a second project for React and copy its DSN (`VITE_SENTRY_DSN`). Leave both unset to disable.
+
+### 5. Render (the app)
+1. Sign up at <https://render.com> with GitHub → **New → Blueprint** → pick this repo. `render.yaml` creates a free Docker web service named `novachat` (build: frontend + backend; start: `alembic upgrade head`, then uvicorn with 1 worker; health check `/api/health`).
+2. Fill the prompted variables (table below). Deploy. The URL is `https://<name>.onrender.com`.
+3. After the first deploy, set `CORS_ORIGINS` to `["https://<name>.onrender.com"]` (JSON list) and redeploy.
+
+Migrations run automatically on every start. To run them by hand: Render shell (or locally with the production `DATABASE_URL`) → `cd backend && alembic upgrade head`.
+Upload cleanup (unattached files older than 24 h, orphaned objects) runs at start and hourly; to run it manually: `cd backend && python -m app.cleanup`.
+
+### 6. Database backups (GitHub secrets)
+Repo → Settings → Secrets and variables → Actions → add: `BACKUP_DATABASE_URL` (Neon direct string), `S3_ENDPOINT_URL`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION`. The *Database backup* workflow then runs daily (and from the Actions tab), uploads `backups/novachat-<timestamp>.sql.gz` to the private bucket and keeps the newest 14. Without the secrets it skips. Never make the bucket public: dumps contain everything.
+
+**Restore:** download a dump from the Supabase dashboard (Storage → bucket → `backups/`), then into an empty database (new Neon branch/project):
+
+```bash
+gunzip -c novachat-20260101T031700Z.sql.gz | psql "<target DATABASE_URL, postgresql:// form>"
+```
+
+### Environment variables
+| Where | Variable | Value |
+|---|---|---|
+| Render | `ENV` | `production` (set by blueprint) |
+| Render | `SECRET_KEY` | generated by the blueprint (≥ 32 random chars) |
+| Render | `DATABASE_URL` | Neon direct string |
+| Render | `COOKIE_SECURE` / `TRUST_PROXY` | `true` / `true` (set by blueprint) |
+| Render | `CORS_ORIGINS` | `["https://<name>.onrender.com"]` |
+| Render | `EMAIL_BACKEND`, `EMAIL_FROM`, `BREVO_API_KEY` | `brevo`, `NovaChat <verified@address>`, API key (Gmail: `smtp`, `SMTP_USER`, `SMTP_PASSWORD`) |
+| Render | `STORAGE_BACKEND` | `s3` (set by blueprint) |
+| Render | `S3_ENDPOINT_URL`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION` | from Supabase |
+| Render | `SENTRY_DSN`, `VITE_SENTRY_DSN` | optional |
+| GitHub secrets | `BACKUP_DATABASE_URL`, `S3_*` (5 values) | as above |
+
+The app refuses to start with `ENV=production` if `SECRET_KEY` is weak, `COOKIE_SECURE` is false, or `STORAGE_BACKEND=local`.
+
+### Free-tier caveats
+- **Cold starts:** Render free sleeps after ~15 min idle; the first request then takes about a minute, and open WebSockets drop (the client reconnects). A free uptime pinger (e.g. UptimeRobot hitting `/api/health` every 5 min) keeps it awake; 750 free hours cover one always-on service. `/api/health` does not touch the database, so Neon can still sleep (its first query adds ~1 s).
+- **Ephemeral disk:** nothing is stored locally; all files go to Supabase. Free Supabase pauses a project after a week with no activity and caps files at 50 MB (the app's largest limit) and 1 GB total.
+- **Single process:** the WebSocket hub and rate limiter are in-memory; do not raise the worker count.
+- Neon free is 0.5 GB per project; Brevo free is 300 emails/day.
