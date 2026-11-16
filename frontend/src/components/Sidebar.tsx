@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { formatTime } from '../lib'
 import { useAuth } from '../store/auth'
 import { conversationTitle, useChat } from '../store/chat'
@@ -41,6 +41,7 @@ export default function Sidebar({
   useEffect(() => {
     void loadFriends().catch(() => {})
   }, [loadFriends])
+  const navigate = useNavigate()
   const [dialog, setDialog] = useState<'chat' | 'group' | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -117,17 +118,13 @@ export default function Sidebar({
           <SidebarSkeleton />
         ) : sorted.length === 0 ? (
           <div className="p-6 text-center text-sm text-slate-600 dark:text-slate-400">
-            <p className="font-medium">No chats yet</p>
-            <p className="mt-1">
-              Start one with{' '}
-              <button
-                onClick={() => setDialog('chat')}
-                className="font-medium text-brand-600 dark:text-indigo-400 underline"
-              >
-                New chat
-              </button>
-              .
-            </p>
+            <p className="font-medium">Add friends to start chatting</p>
+            <button
+              onClick={() => navigate('/friends')}
+              className="mt-3 h-10 rounded-lg bg-brand-600 px-4 font-medium text-white"
+            >
+              Add friends
+            </button>
           </div>
         ) : (
           sorted.map((c) => {
