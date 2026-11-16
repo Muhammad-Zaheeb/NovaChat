@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
@@ -12,6 +12,7 @@ def _now() -> datetime:
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (Index("uq_users_username_lower", text("lower(username)"), unique=True),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     username: Mapped[str] = mapped_column(String(50), unique=True, index=True)

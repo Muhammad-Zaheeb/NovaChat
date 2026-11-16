@@ -26,8 +26,12 @@ export const authApi = {
 }
 
 export const usersApi = {
-  search: (q: string) =>
-    api.get<UserPublic[]>('/users/search', { params: { q } }).then((r) => r.data),
+  search: (q: string, offset = 0) =>
+    api
+      .get<{ items: UserPublic[]; has_more: boolean }>('/users/search', {
+        params: { q, offset },
+      })
+      .then((r) => r.data),
   online: (ids: number[]) =>
     api
       .get<{ online: number[] }>('/users/online', { params: { ids: ids.join(',') } })

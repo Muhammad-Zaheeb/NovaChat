@@ -13,6 +13,7 @@ export interface UserPublic {
   bio?: string | null
   last_seen_at?: string | null
   friendship_status?: FriendshipStatus
+  mutual_friends_count?: number
 }
 export type ConversationType = 'direct' | 'group'
 export type MemberRole = 'admin' | 'member'

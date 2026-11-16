@@ -44,9 +44,9 @@ async def test_search_email_exact_case_insensitive(users):
     async with engine.begin() as conn:
         await conn.execute(text("UPDATE users SET email='Bob.Mixed@Example.com' WHERE username='bob'"))
     r = await users["alice"].get("/users/search", params={"q": "BOB.mixed@example.COM"})
-    assert [u["username"] for u in r.json()] == ["bob"]
+    assert [u["username"] for u in r.json()["items"]] == ["bob"]
     r = await users["alice"].get("/users/search", params={"q": "bob.mixed"})
-    assert r.json() == []
+    assert r.json()["items"] == []
 
 
 from datetime import datetime, timedelta, timezone  # noqa: E402

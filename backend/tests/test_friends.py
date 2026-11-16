@@ -59,9 +59,9 @@ async def test_search_friendship_status():
     await req(a, d)
     await d.post(f"/friends/requests/{(await d.get('/friends/requests')).json()['incoming'][0]['id']}/accept")
     for q, want in (("bob", "pending_outgoing"), ("carol", "pending_incoming")):
-        res = {u["username"]: u["friendship_status"] for u in (await a.get("/users/search", params={"q": q})).json()}
+        res = {u["username"]: u["friendship_status"] for u in (await a.get("/users/search", params={"q": q})).json()["items"]}
         assert res == {q: want}
-    res = {u["username"]: u["friendship_status"] for u in (await a.get("/users/search", params={"q": "dave"})).json()}
+    res = {u["username"]: u["friendship_status"] for u in (await a.get("/users/search", params={"q": "dave"})).json()["items"]}
     assert res == {"dave": "friends"}
     assert rid
 

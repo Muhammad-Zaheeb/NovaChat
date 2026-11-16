@@ -50,6 +50,33 @@ async def non_friends(db: AsyncSession, me_id: int, ids: set[int]) -> set[int]:
     return ids - friends
 
 
+async def mutual_counts(db: AsyncSession, me_id: int, ids: list[int]) -> dict[int, int]:
+    """Number of accepted friends each of `ids` shares with me_id."""
+    if not ids:
+        return {}
+    rows = await db.execute(
+        select(Friendship.requester_id, Friendship.addressee_id).where(
+            Friendship.status == FriendshipStatus.accepted,
+            or_(Friendship.requester_id == me_id, Friendship.addressee_id == me_id),
+        )
+    )
+    mine = {b if a == me_id else a for a, b in rows}
+    if not mine:
+        return {}
+    rows = await db.execute(
+        select(Friendship.requester_id, Friendship.addressee_id).where(
+            Friendship.status == FriendshipStatus.accepted,
+            or_(Friendship.requester_id.in_(ids), Friendship.addressee_id.in_(ids)),
+        )
+    )
+    out: dict[int, int] = {}
+    for a, b in rows:
+        for x, y in ((a, b), (b, a)):
+            if x in ids and y in mine:
+                out[x] = out.get(x, 0) + 1
+    return out
+
+
 async def statuses(db: AsyncSession, me_id: int, ids: list[int]) -> dict[int, str]:
     if not ids:
         return {}

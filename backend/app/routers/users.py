@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.session import get_db
 from app.dependencies import get_current_user
 from app.models.user import User
-from app.schemas.user import ProfileUpdate, UserOut, UserSearchResult
+from app.schemas.user import ProfileUpdate, UserOut, UserSearchPage, UserSearchResult
 from app.services import chat, friends, users
 from app.ws import notify
 from app.ws.manager import manager
@@ -12,19 +12,30 @@ from app.ws.manager import manager
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
-@router.get("/search", response_model=list[UserSearchResult])
+@router.get("/search", response_model=UserSearchPage)
 async def search_users(
     q: str = Query(min_length=2, max_length=50),
+    offset: int = Query(0, ge=0, le=10000),
     limit: int = Query(20, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
     me: User = Depends(get_current_user),
 ):
-    found = await users.search_users(db, me, q, limit)
-    st = await friends.statuses(db, me.id, [u.id for u in found])
-    return [
-        UserSearchResult(id=u.id, username=u.username, display_name=u.display_name, bio=u.bio, friendship_status=st.get(u.id, "none"))
-        for u in found
-    ]
+    found = await users.search_users(db, me, q, offset, limit + 1)
+    has_more = len(found) > limit
+    found = found[:limit]
+    ids = [u.id for u in found]
+    st = await friends.statuses(db, me.id, ids)
+    mutual = await friends.mutual_counts(db, me.id, ids)
+    return UserSearchPage(
+        items=[
+            UserSearchResult(
+                id=u.id, username=u.username, display_name=u.display_name, bio=u.bio,
+                friendship_status=st.get(u.id, "none"), mutual_friends_count=mutual.get(u.id, 0),
+            )
+            for u in found
+        ],
+        has_more=has_more,
+    )
 
 
 @router.get("/online")

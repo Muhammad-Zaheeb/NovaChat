@@ -13,7 +13,7 @@ class RegisterRequest(BaseModel):
     def username_chars(cls, v: str) -> str:
         if not re.fullmatch(r"[A-Za-z0-9_]+", v):
             raise ValueError("Username may contain only letters, digits and underscores")
-        return v
+        return v.lower()
 
     @field_validator("password")
     @classmethod

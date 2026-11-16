@@ -1,5 +1,5 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,7 +25,7 @@ async def register(
     if is_disposable(email):
         raise HTTPException(status_code=400, detail="Disposable email addresses are not allowed")
     existing = await db.scalar(
-        select(User).where(or_(User.email == email, User.username == data.username))
+        select(User).where(or_(User.email == email, func.lower(User.username) == data.username))
     )
     if existing:
         field = "Email" if existing.email == email else "Username"

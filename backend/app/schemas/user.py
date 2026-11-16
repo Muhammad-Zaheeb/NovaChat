@@ -34,6 +34,12 @@ class UserSearchResult(BaseModel):
     display_name: str | None = None
     bio: str | None = None
     friendship_status: str = "none"  # none | pending_outgoing | pending_incoming | friends
+    mutual_friends_count: int = 0
+
+
+class UserSearchPage(BaseModel):
+    items: list[UserSearchResult]
+    has_more: bool = False
 
 
 class ProfileUpdate(BaseModel):

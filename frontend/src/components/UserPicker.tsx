@@ -10,7 +10,11 @@ function Identity({ u }: { u: UserPublic }) {
   return (
     <span className="min-w-0 flex-1">
       <span className="block truncate text-sm font-medium text-fg">{displayName(u)}</span>
-      <span className="block truncate text-xs text-muted">@{u.username}</span>
+      <span className="block truncate text-xs text-muted">
+        @{u.username}
+        {!!u.mutual_friends_count &&
+          ` · ${u.mutual_friends_count} mutual friend${u.mutual_friends_count === 1 ? '' : 's'}`}
+      </span>
     </span>
   )
 }
@@ -23,7 +27,7 @@ export default function UserPicker({
   renderAction,
   initialQuery = '',
   onSearch,
-  placeholder = 'Search by username or exact email',
+  placeholder = 'Search by name, username or exact email',
   autoFocus = true,
 }: {
   onPick?: (u: UserPublic) => void
@@ -44,6 +48,8 @@ export default function UserPicker({
   const [q, setQ] = useState(initialQuery)
   const [results, setResults] = useState<UserPublic[]>([])
   const [settled, setSettled] = useState('')
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle')
   const seq = useRef(0)
 
@@ -55,9 +61,10 @@ export default function UserPicker({
     const t = setTimeout(async () => {
       setState('loading')
       try {
-        const found = (await usersApi.search(term)).filter((u) => u.id !== me?.id)
+        const page = await usersApi.search(term)
         if (mine !== seq.current) return
-        setResults(found)
+        setResults(page.items.filter((u) => u.id !== me?.id))
+        setHasMore(page.has_more)
         setSettled(term)
         setState('idle')
       } catch {
@@ -67,6 +74,21 @@ export default function UserPicker({
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, me?.id])
+
+  const loadMore = async () => {
+    const mine = seq.current
+    setLoadingMore(true)
+    try {
+      const page = await usersApi.search(settled, results.length)
+      if (mine !== seq.current) return
+      setResults((r) => [...r, ...page.items.filter((u) => u.id !== me?.id)])
+      setHasMore(page.has_more)
+    } catch {
+      setState('error')
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   const term = q.trim()
   // Friends-only pickers list your friends straight away; search narrows them and
@@ -127,7 +149,7 @@ export default function UserPicker({
                   ? note(
                       <>
                         <SearchX size={16} aria-hidden /> Nobody matches “{term}”.
-                        Usernames must match the start; emails must match exactly.
+                        Emails must match exactly.
                       </>,
                     )
                   : rows.map((u) => {
@@ -165,6 +187,18 @@ export default function UserPicker({
                         </li>
                       )
                     })}
+        {hasMore && term.length >= 2 && settled === term && (
+          <li className="px-2 py-2">
+            <button
+              type="button"
+              onClick={loadMore}
+              disabled={loadingMore}
+              className="w-full cursor-pointer rounded-md py-2 text-sm font-medium text-accent hover:bg-surface-2 disabled:opacity-60"
+            >
+              {loadingMore ? 'Loading…' : 'Load more'}
+            </button>
+          </li>
+        )}
       </ul>
     </div>
   )

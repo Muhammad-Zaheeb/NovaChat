@@ -89,16 +89,16 @@ async def test_message_pagination(users):
 async def test_user_search(users):
     a = users["alice"]
     r = await a.get("/users/search?q=ALICE")
-    assert r.json() == []  # excludes self
+    assert r.json()["items"] == []  # excludes self
     r = await a.get("/users/search?q=ob")
-    assert [u["username"] for u in r.json()] == ["bob"]
-    assert set(r.json()[0]) == {"id", "username", "display_name", "bio", "friendship_status"}  # no email leak
+    assert [u["username"] for u in r.json()["items"]] == ["bob"]
+    assert set(r.json()["items"][0]) == {"id", "username", "display_name", "bio", "friendship_status", "mutual_friends_count"}  # no email leak
     assert (await a.get("/users/search?q=b")).status_code == 422  # too short
     assert (await a.get("/users/search?q=bo&limit=51")).status_code == 422
-    assert (await a.get("/users/search?q=%25%25")).json() == []  # wildcard is escaped
+    assert (await a.get("/users/search?q=%25%25")).json()["items"] == []  # wildcard is escaped
     # email: exact match only
-    assert [u["username"] for u in (await a.get("/users/search?q=bob@example.com")).json()] == ["bob"]
-    assert (await a.get("/users/search?q=bob@exam")).json() == []
+    assert [u["username"] for u in (await a.get("/users/search?q=bob@example.com")).json()["items"]] == ["bob"]
+    assert (await a.get("/users/search?q=bob@exam")).json()["items"] == []
 
 
 async def test_unread_counts_and_read(users):
@@ -135,3 +135,35 @@ async def test_read_message_must_belong_to_conversation(users):
     other = (await a.post(f"/conversations/{c2}/messages", json={"content": "x"})).json()["id"]
     assert (await b.post(f"/conversations/{c1}/read", json={"message_id": other})).status_code == 404
     assert (await b.post(f"/conversations/{c1}/read", json={"message_id": 99999})).status_code == 404
+
+
+async def test_username_case_insensitive_unique(client):
+    body = {"email": "sara1@example.com", "password": "password123"}
+    r = await client.post("/auth/register", json={**body, "username": "Sara"})
+    assert r.status_code == 201 and r.json()["username"] == "sara"  # stored lowercase
+    r = await client.post("/auth/register", json={"email": "sara2@example.com", "password": "password123", "username": "sARA"})
+    assert r.status_code == 409
+
+
+async def test_search_display_name_ranking_mutuals_and_paging(users):
+    from sqlalchemy import text
+    from app.database.engine import engine
+    a = users["alice"]
+    async with engine.begin() as conn:
+        await conn.execute(text("UPDATE users SET display_name='Sam Carol' WHERE username='bob'"))
+        await conn.execute(text("UPDATE users SET display_name='Zed' WHERE username='mallory'"))
+    # "car": carol (username prefix) outranks bob (display contains)
+    items = (await a.get("/users/search?q=car")).json()["items"]
+    assert [u["username"] for u in items] == ["carol", "bob"]
+    # display-name prefix beats contains; matches display_name at all
+    items = (await a.get("/users/search?q=sam")).json()["items"]
+    assert [u["username"] for u in items] == ["bob"]
+    # everyone is friends with everyone: alice and bob share carol and mallory
+    bob = (await a.get("/users/search?q=bob")).json()["items"][0]
+    assert bob["mutual_friends_count"] == 2
+    # pagination
+    r = await a.get("/users/search?q=ar&limit=1")  # carol, mallory
+    assert r.json()["has_more"] is True and len(r.json()["items"]) == 1
+    r2 = await a.get("/users/search?q=ar&limit=1&offset=1")
+    assert r2.json()["has_more"] is False
+    assert r.json()["items"][0]["id"] != r2.json()["items"][0]["id"]
