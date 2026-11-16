@@ -34,6 +34,11 @@ export default function Composer({ convId, title }: { convId: number; title: str
   useEffect(() => {
     if (editing || replyTo) taRef.current?.focus()
   }, [editing, replyTo])
+  // Opening a chat puts the cursor in the message box (not on touch: no surprise keyboard).
+  useEffect(() => {
+    if (matchMedia('(pointer: fine)').matches)
+      taRef.current?.focus({ preventScroll: true })
+  }, [convId])
 
   const lastStart = useRef(0)
   const idle = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)

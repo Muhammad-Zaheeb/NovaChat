@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { MessagesSquare, ShieldCheck, UserPlus, Zap } from 'lucide-react'
 
-export function Logo({ size = 32 }: { size?: number }) {
+export function Logo({ size = 32, markOnly }: { size?: number; markOnly?: boolean }) {
   return (
     <span className="inline-flex items-center gap-2.5">
       <span
@@ -11,7 +11,11 @@ export function Logo({ size = 32 }: { size?: number }) {
       >
         <MessagesSquare size={Math.round(size * 0.55)} />
       </span>
-      <span className="text-base font-semibold tracking-tight text-fg">NovaChat</span>
+      {markOnly ? (
+        <span className="sr-only">NovaChat</span>
+      ) : (
+        <span className="text-base font-semibold tracking-tight text-fg">NovaChat</span>
+      )}
     </span>
   )
 }

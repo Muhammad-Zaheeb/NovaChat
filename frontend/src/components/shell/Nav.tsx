@@ -39,7 +39,7 @@ function useItems(): Item[] {
       label: 'Friends',
       icon: Users,
       badge: pending,
-      badgeLabel: 'friend requests',
+      badgeLabel: 'pending friend requests',
     },
     { to: '/profile', label: 'Settings', icon: Settings },
   ]
@@ -63,7 +63,7 @@ export function NavRail() {
       className="hidden w-[68px] shrink-0 flex-col items-center gap-1 border-r border-line bg-surface py-3 md:flex"
     >
       <span className="mb-3">
-        <Logo size={32} />
+        <Logo size={32} markOnly />
       </span>
       {items.map((it) => (
         <Tooltip key={it.to} label={it.label} side="right">
