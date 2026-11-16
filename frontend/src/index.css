@@ -158,3 +158,11 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* Phone: dialogs are bottom sheets, so lift toasts to the top while one is open. */
+@media (max-width: 639px) {
+  body[data-dialogs] .toaster {
+    top: calc(env(safe-area-inset-top) + 0.75rem);
+    bottom: auto;
+  }
+}

@@ -22,6 +22,7 @@ export default function UserPicker({
   friendsOnly = false,
   renderAction,
   initialQuery = '',
+  onSearch,
   placeholder = 'Search by username or exact email',
   autoFocus = true,
 }: {
@@ -32,10 +33,13 @@ export default function UserPicker({
   /** Replace the click-to-pick row with a custom action (e.g. friend buttons). */
   renderAction?: (u: UserPublic) => ReactNode
   initialQuery?: string
+  /** Called once a search term of 2+ characters is typed. */
+  onSearch?: () => void
   placeholder?: string
   autoFocus?: boolean
 }) {
-  const friendIds = useFriends((s) => s.friends).map((f) => f.id)
+  const friends = useFriends((s) => s.friends)
+  const friendIds = friends.map((f) => f.id)
   const me = useAuth((s) => s.user)
   const [q, setQ] = useState(initialQuery)
   const [results, setResults] = useState<UserPublic[]>([])
@@ -47,6 +51,7 @@ export default function UserPicker({
     const term = q.trim()
     const mine = ++seq.current // any response from an older query is ignored
     if (term.length < 2) return // the list is derived from `term`, so stale results never show
+    onSearch?.()
     const t = setTimeout(async () => {
       setState('loading')
       try {
@@ -60,9 +65,24 @@ export default function UserPicker({
       }
     }, 250)
     return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, me?.id])
 
   const term = q.trim()
+  // Friends-only pickers list your friends straight away; search narrows them and
+  // adds non-friends (shown disabled).
+  const needle = term.toLowerCase()
+  const local = friendsOnly
+    ? friends.filter(
+        (f) =>
+          !needle ||
+          f.username.toLowerCase().includes(needle) ||
+          (f.display_name ?? '').toLowerCase().includes(needle),
+      )
+    : []
+  const remote = term.length >= 2 && settled === term ? results : []
+  const rows = [...local, ...remote.filter((u) => !local.some((l) => l.id === u.id))]
+  const searching = term.length >= 2 && settled !== term
   const note = (text: ReactNode, tone: 'muted' | 'danger' = 'muted') => (
     <li
       className={cn(
@@ -86,59 +106,65 @@ export default function UserPicker({
         onChange={(e) => setQ(e.target.value)}
       />
       <ul className="mt-2 max-h-72 space-y-0.5 overflow-y-auto" aria-live="polite">
-        {term.length < 2
-          ? note('Type at least 2 characters to search.')
-          : state === 'error' && settled !== term
-            ? note('Search failed. Check your connection and try again.', 'danger')
-            : settled !== term
-              ? [0, 1].map((i) => (
-                  <li key={i} className="flex items-center gap-3 p-2" aria-hidden>
-                    <Skeleton className="h-9 w-9 !rounded-full" />
-                    <Skeleton className="h-3 w-40" />
-                  </li>
-                ))
-              : results.length === 0
-                ? note(
-                    <>
-                      <SearchX size={16} aria-hidden /> Nobody matches “{term}”. Usernames
-                      must match the start; emails must match exactly.
-                    </>,
-                  )
-                : results.map((u) => {
-                    const blocked = friendsOnly && !friendIds.includes(u.id)
-                    const selected = selectedIds.includes(u.id)
-                    return renderAction ? (
-                      <li
-                        key={u.id}
-                        className="flex min-h-14 items-center gap-3 rounded-md px-2 py-1.5"
-                      >
-                        <Avatar id={u.id} name={displayName(u)} size={36} />
-                        <Identity u={u} />
-                        {renderAction(u)}
-                      </li>
-                    ) : (
-                      <li key={u.id}>
-                        <button
-                          type="button"
-                          onClick={() => onPick?.(u)}
-                          disabled={blocked}
-                          aria-pressed={
-                            onPick && selectedIds.length ? selected : undefined
-                          }
-                          className="flex min-h-14 w-full cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
+        {rows.length === 0 && term.length < 2
+          ? note(
+              friendsOnly
+                ? 'You have no friends to add yet.'
+                : 'Type at least 2 characters to search.',
+            )
+          : !friendsOnly && term.length < 2
+            ? note('Type at least 2 characters to search.')
+            : rows.length === 0 && state === 'error' && settled !== term
+              ? note('Search failed. Check your connection and try again.', 'danger')
+              : rows.length === 0 && searching
+                ? [0, 1].map((i) => (
+                    <li key={i} className="flex items-center gap-3 p-2" aria-hidden>
+                      <Skeleton className="h-9 w-9 !rounded-full" />
+                      <Skeleton className="h-3 w-40" />
+                    </li>
+                  ))
+                : rows.length === 0
+                  ? note(
+                      <>
+                        <SearchX size={16} aria-hidden /> Nobody matches “{term}”.
+                        Usernames must match the start; emails must match exactly.
+                      </>,
+                    )
+                  : rows.map((u) => {
+                      const blocked = friendsOnly && !friendIds.includes(u.id)
+                      const selected = selectedIds.includes(u.id)
+                      return renderAction ? (
+                        <li
+                          key={u.id}
+                          className="flex min-h-14 items-center gap-3 rounded-md px-2 py-1.5"
                         >
                           <Avatar id={u.id} name={displayName(u)} size={36} />
                           <Identity u={u} />
-                          {blocked && <Tag>Not a friend yet</Tag>}
-                          {selected && (
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-accent-fg animate-pop-in">
-                              <Check size={12} aria-label="Selected" />
-                            </span>
-                          )}
-                        </button>
-                      </li>
-                    )
-                  })}
+                          {renderAction(u)}
+                        </li>
+                      ) : (
+                        <li key={u.id}>
+                          <button
+                            type="button"
+                            onClick={() => onPick?.(u)}
+                            disabled={blocked}
+                            aria-pressed={
+                              onPick && selectedIds.length ? selected : undefined
+                            }
+                            className="flex min-h-14 w-full cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
+                          >
+                            <Avatar id={u.id} name={displayName(u)} size={36} />
+                            <Identity u={u} />
+                            {blocked && <Tag>Not a friend yet</Tag>}
+                            {selected && (
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-accent-fg animate-pop-in">
+                                <Check size={12} aria-label="Selected" />
+                              </span>
+                            )}
+                          </button>
+                        </li>
+                      )
+                    })}
       </ul>
     </div>
   )

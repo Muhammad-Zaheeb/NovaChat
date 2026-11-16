@@ -2,7 +2,13 @@ import { Link } from 'react-router-dom'
 import { ArrowLeft, Compass } from 'lucide-react'
 import { EmptyState } from './ui'
 
-export default function NotFound({ message = 'Page not found' }: { message?: string }) {
+export default function NotFound({
+  message = 'Page not found',
+  conversation = false,
+}: {
+  message?: string
+  conversation?: boolean
+}) {
   return (
     <EmptyState
       icon={Compass}
@@ -17,7 +23,9 @@ export default function NotFound({ message = 'Page not found' }: { message?: str
         </Link>
       }
     >
-      The link may be broken, or you may no longer be a member of this conversation.
+      {conversation
+        ? 'The link may be broken, or you may no longer be a member of this conversation.'
+        : 'The page you are looking for does not exist or has moved.'}
     </EmptyState>
   )
 }

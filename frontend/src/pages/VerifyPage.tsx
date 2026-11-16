@@ -25,19 +25,24 @@ export default function VerifyPage() {
     return () => clearTimeout(t)
   }, [wait])
 
-  const onCode = (v: string) => setCode(v.replace(/\D/g, '').slice(0, 6))
+  const onCode = (v: string) => {
+    const next = v.replace(/\D/g, '').slice(0, 6)
+    setCode(next)
+    if (next.length === 6) void submit(undefined, next)
+  }
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault()
+  const submit = async (e?: FormEvent, value = code) => {
+    e?.preventDefault()
+    if (busy) return
     if (!/^\S+@\S+\.\S+$/.test(email)) return setError('Enter a valid email address')
-    if (code.length !== 6) return setError('Enter all 6 digits of the code')
+    if (value.length !== 6) return setError('Enter all 6 digits of the code')
     setError('')
     setBusy(true)
     try {
-      await authApi.verifyEmail(email, code)
+      await authApi.verifyEmail(email, value)
       navigate('/login', {
         replace: true,
-        state: { notice: 'Email verified. Please sign in.' },
+        state: { email, notice: 'Email verified. Please sign in.' },
       })
     } catch (err) {
       const d = axios.isAxiosError(err) ? err.response?.data?.detail : ''

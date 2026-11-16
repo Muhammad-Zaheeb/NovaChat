@@ -14,9 +14,7 @@ export default function Onboarding() {
   const outgoing = useFriends((s) => s.outgoing.length)
   const incoming = useFriends((s) => s.incoming.length)
   const listLoaded = useChat((s) => s.listLoaded)
-  const chatted = useChat((s) =>
-    Object.values(s.conversations).some((c) => c.last_message),
-  )
+  const chatted = useChat((s) => Object.keys(s.conversations).length > 0)
 
   const steps = [
     {
@@ -29,16 +27,26 @@ export default function Onboarding() {
     {
       label: 'Send a request',
       text: 'They can accept from Friends.',
-      done: friends + outgoing > 0,
+      done: friends + outgoing + incoming > 0,
       action: () => navigate('/friends?tab=find'),
       cta: 'Add',
     },
     {
       label: 'Start chatting',
-      text: 'Message a friend once they accept.',
+      text:
+        incoming > 0
+          ? `You have ${incoming} friend request${incoming === 1 ? '' : 's'}. Accept to start chatting.`
+          : 'Message a friend once they accept.',
       done: chatted,
-      action: () => navigate(friends ? '/friends' : '/friends?tab=requests'),
-      cta: 'Chat',
+      action: () =>
+        navigate(
+          incoming > 0
+            ? '/friends?tab=requests'
+            : friends
+              ? '/friends?tab=friends'
+              : '/friends?tab=find',
+        ),
+      cta: incoming > 0 ? 'Review' : 'Chat',
     },
   ]
   const done = steps.filter((s) => s.done).length

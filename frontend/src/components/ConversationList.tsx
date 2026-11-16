@@ -149,6 +149,7 @@ export default function ConversationList({
   const listLoaded = useChat((s) => s.listLoaded)
   const loadConversations = useChat((s) => s.loadConversations)
   const hasFriends = useFriends((s) => s.friends.length > 0)
+  const incoming = useFriends((s) => s.incoming.length)
   const navigate = useNavigate()
   const [dialog, setDialog] = useState<'chat' | 'group' | null>(null)
   const [failed, setFailed] = useState(false)
@@ -230,7 +231,23 @@ export default function ConversationList({
         ) : !listLoaded ? (
           <ListSkeleton />
         ) : sorted.length === 0 ? (
-          hasFriends ? (
+          incoming > 0 ? (
+            <EmptyState
+              icon={UserPlus}
+              title={`You have ${incoming} friend request${incoming === 1 ? '' : 's'}`}
+              action={
+                <Button
+                  size="sm"
+                  icon={UserPlus}
+                  onClick={() => navigate('/friends?tab=requests')}
+                >
+                  Review requests
+                </Button>
+              }
+            >
+              Accept a request to start chatting.
+            </EmptyState>
+          ) : hasFriends ? (
             <EmptyState
               icon={MessageSquarePlus}
               title="No conversations yet"

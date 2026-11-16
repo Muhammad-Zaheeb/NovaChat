@@ -90,7 +90,7 @@ export default function ChatPage({ view }: { view?: 'friends' | 'profile' }) {
             Number.isInteger(Number(id)) ? (
               <ConversationView id={Number(id)} key={id} />
             ) : (
-              <NotFound message="Conversation not found" />
+              <NotFound message="Conversation not found" conversation />
             )
           ) : (
             <EmptyState

@@ -75,7 +75,7 @@ export default function ConversationView({ id }: { id: number }) {
   }, [id, markRead])
 
   if (error === 'notfound' || (listLoaded && !conv))
-    return <NotFound message="Conversation not found" />
+    return <NotFound message="Conversation not found" conversation />
   if (error === 'failed')
     return (
       <EmptyState
@@ -127,7 +127,8 @@ export default function ConversationView({ id }: { id: number }) {
       <TypingDots /> {typing}
     </span>
   ) : conv.type === 'group' ? (
-    detail && `${detail.members.length} members`
+    detail &&
+    `${detail.members.length} ${detail.members.length === 1 ? 'member' : 'members'}`
   ) : (
     other &&
     (otherOnline ? (

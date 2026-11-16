@@ -14,8 +14,13 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   const isRegister = mode === 'register'
   const { user, login, register } = useAuth()
   const navigate = useNavigate()
-  const notice = (useLocation().state as { notice?: string } | null)?.notice
-  const [values, setValues] = useState({ username: '', email: '', password: '' })
+  const navState = useLocation().state as { notice?: string; email?: string } | null
+  const notice = navState?.notice
+  const [values, setValues] = useState({
+    username: '',
+    email: !isRegister ? (navState?.email ?? '') : '',
+    password: '',
+  })
   const [touched, setTouched] = useState<Partial<Record<Field, boolean>>>({})
   const [showPw, setShowPw] = useState(false)
   const [error, setError] = useState('')

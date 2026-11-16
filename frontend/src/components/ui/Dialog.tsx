@@ -75,7 +75,12 @@ export function Dialog({
     document.addEventListener('keydown', onKey)
     const overflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+    const n = Number(document.body.dataset.dialogs ?? 0) + 1
+    document.body.dataset.dialogs = String(n)
     return () => {
+      const left = Number(document.body.dataset.dialogs ?? 1) - 1
+      if (left > 0) document.body.dataset.dialogs = String(left)
+      else delete document.body.dataset.dialogs
       document.removeEventListener('keydown', onKey)
       document.body.style.overflow = overflow
       if (opener?.isConnected) opener.focus()

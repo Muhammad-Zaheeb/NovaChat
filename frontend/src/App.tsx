@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute'
 import VerifyPage from './pages/VerifyPage'
 import AuthPage from './pages/AuthPage'
@@ -25,6 +25,7 @@ export default function App() {
           <Route path="/profile" element={<ChatPage view="profile" />} />
           <Route path="/c/:id" element={<ChatPage />} />
         </Route>
+        <Route path="/settings" element={<Navigate to="/profile" replace />} />
         <Route
           path="*"
           element={

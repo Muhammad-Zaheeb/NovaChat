@@ -73,6 +73,9 @@ const merge = (a: Message[], b: Message[]) => {
   return [...map.values()].sort((x, y) => x.id - y.id)
 }
 
+/** Newest message id already reported as read, per conversation (avoids duplicate receipts). */
+const lastReadSent: Record<number, number> = {}
+
 export const useChat = create<ChatState>((set, get) => ({
   conversations: {},
   details: {},
@@ -320,6 +323,7 @@ export const useChat = create<ChatState>((set, get) => ({
     const conv = get().conversations[id]
     const last = get().threads[id]?.items.at(-1)
     if (!conv || !last || !isAttentive()) return
+    const alreadySent = lastReadSent[id] ?? 0
     if (conv.unread_count > 0) {
       set((s) => ({
         conversations: {
@@ -328,7 +332,14 @@ export const useChat = create<ChatState>((set, get) => ({
         },
       }))
     }
-    await chatApi.read(id, last.id)
+    if (last.id <= alreadySent) return
+    lastReadSent[id] = last.id
+    try {
+      await chatApi.read(id, last.id)
+    } catch (e) {
+      lastReadSent[id] = alreadySent
+      throw e
+    }
   },
 
   reset: () =>

@@ -89,20 +89,18 @@ export default function FriendsView() {
   const lastSeen = useLive((s) => s.lastSeen)
   const message = useMessage()
   const [params, setParams] = useSearchParams()
-  const tab = (
-    TABS.includes(params.get('tab') as Tab) ? params.get('tab') : 'friends'
-  ) as Tab
-  const setTab = (t: Tab) =>
-    setParams(t === 'friends' ? {} : { tab: t }, { replace: true })
+  const explicit = TABS.includes(params.get('tab') as Tab)
+    ? (params.get('tab') as Tab)
+    : null
+  // With no tab chosen, land on Requests when someone is waiting for an answer.
+  const tab: Tab = explicit ?? (incoming.length > 0 ? 'requests' : 'friends')
+  const setTab = (t: Tab) => setParams({ tab: t }, { replace: true })
   const [failed, setFailed] = useState(false)
   const markFind = useOnboarding((s) => s.markFind)
 
   useEffect(() => {
     load().catch(() => setFailed(true))
   }, [load])
-  useEffect(() => {
-    if (tab === 'find') markFind()
-  }, [tab, markFind])
 
   const act = async (fn: () => Promise<unknown>, fallback: string, ok?: string) => {
     try {
@@ -163,49 +161,65 @@ export default function FriendsView() {
       </ul>
     )
   else if (tab === 'friends')
-    body =
-      friends.length === 0 ? (
-        <EmptyState icon={Users} title="No friends yet" action={findCta}>
-          Find people by username or email and send them a request. Once they accept, you
-          can chat.
-        </EmptyState>
-      ) : (
-        <ul className="space-y-0.5">
-          {friends.map((f) => {
-            const on = online[f.id] ?? f.online
-            return (
-              <PersonRow
-                key={f.id}
-                user={f}
-                online={on}
-                sub={on ? 'Online' : lastSeenText(lastSeen[f.id] ?? f.last_seen_at)}
-              >
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  icon={MessageSquare}
-                  onClick={() => void message(f.id)}
+    body = (
+      <>
+        {incoming.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setTab('requests')}
+            className="mb-3 flex w-full cursor-pointer items-center gap-2 rounded-md bg-accent-soft px-3 py-2.5 text-left text-sm font-medium text-accent-text transition-colors hover:brightness-95"
+          >
+            <Inbox size={16} aria-hidden />
+            <span className="flex-1">
+              {incoming.length} pending request{incoming.length === 1 ? '' : 's'}
+            </span>
+            <span className="underline underline-offset-4">Review</span>
+          </button>
+        )}
+        {friends.length === 0 ? (
+          <EmptyState icon={Users} title="No friends yet" action={findCta}>
+            Find people by username or email and send them a request. Once they accept,
+            you can chat.
+          </EmptyState>
+        ) : (
+          <ul className="space-y-0.5">
+            {friends.map((f) => {
+              const on = online[f.id] ?? f.online
+              return (
+                <PersonRow
+                  key={f.id}
+                  user={f}
+                  online={on}
+                  sub={on ? 'Online' : lastSeenText(lastSeen[f.id] ?? f.last_seen_at)}
                 >
-                  Message
-                </Button>
-                <Menu
-                  label={`More options for ${displayName(f)}`}
-                  icon={MoreHorizontal}
-                  size="sm"
-                  items={[
-                    {
-                      label: 'Remove friend',
-                      icon: UserMinus,
-                      danger: true,
-                      onSelect: () => unfriend(f),
-                    },
-                  ]}
-                />
-              </PersonRow>
-            )
-          })}
-        </ul>
-      )
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon={MessageSquare}
+                    onClick={() => void message(f.id)}
+                  >
+                    Message
+                  </Button>
+                  <Menu
+                    label={`More options for ${displayName(f)}`}
+                    icon={MoreHorizontal}
+                    size="sm"
+                    items={[
+                      {
+                        label: 'Remove friend',
+                        icon: UserMinus,
+                        danger: true,
+                        onSelect: () => unfriend(f),
+                      },
+                    ]}
+                  />
+                </PersonRow>
+              )
+            })}
+          </ul>
+        )}
+      </>
+    )
   else if (tab === 'requests')
     body =
       incoming.length + outgoing.length === 0 ? (
@@ -296,6 +310,7 @@ export default function FriendsView() {
         </p>
         <UserPicker
           initialQuery={params.get('q') ?? ''}
+          onSearch={markFind}
           renderAction={(u) => <FriendActions user={u} />}
         />
       </div>
@@ -343,7 +358,7 @@ export default function FriendsView() {
         value={tab}
         className="min-h-0 flex-1 overflow-y-auto px-2 py-4 md:px-6"
       >
-        <div className="mx-auto max-w-2xl">{body}</div>
+        <div className="w-full max-w-3xl">{body}</div>
       </TabPanel>
     </div>
   )
