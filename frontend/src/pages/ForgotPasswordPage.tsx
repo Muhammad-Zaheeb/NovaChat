@@ -5,6 +5,7 @@ import axios from 'axios'
 import { authApi, errorMessage } from '../api'
 import AuthLayout, { FormNotice } from '../components/AuthLayout'
 import { Button, IconButton, Input } from '../components/ui'
+import { useAuth } from '../store/auth'
 
 const emailOk = (v: string) => /^\S+@\S+\.\S+$/.test(v)
 
@@ -44,6 +45,7 @@ export default function ForgotPasswordPage() {
     setBusy(true)
     try {
       await authApi.resetPassword(email, code, password)
+      await useAuth.getState().logout().catch(() => {}) // this tab's old session is revoked now
       navigate('/login', {
         replace: true,
         state: { email, notice: 'Password changed. Please sign in with your new password.' },
