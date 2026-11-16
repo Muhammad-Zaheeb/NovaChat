@@ -31,20 +31,26 @@ export function useUploads() {
   const patch = (key: string, p: Partial<UploadItem>) =>
     setItems((xs) => xs.map((x) => (x.key === key ? { ...x, ...p } : x)))
 
+  // One upload at a time, in selection order, so attachment ids (and display order) match.
+  const queue = useRef<Promise<unknown>>(Promise.resolve())
   const start = useCallback((key: string, file: File) => {
     const ctl = new AbortController()
     aborts.current.set(key, ctl)
-    filesApi
-      .upload(file, file.name, {
-        signal: ctl.signal,
-        onProgress: (f) => patch(key, { progress: f }),
-      })
-      .then((att) => patch(key, { status: 'done', progress: 1, att }))
-      .catch((e) => {
-        if (ctl.signal.aborted) return
-        patch(key, { status: 'error', error: errorMessage(e, 'Upload failed') })
-      })
-      .finally(() => aborts.current.delete(key))
+    const run = () => {
+      if (ctl.signal.aborted) return
+      return filesApi
+        .upload(file, file.name, {
+          signal: ctl.signal,
+          onProgress: (f) => patch(key, { progress: f }),
+        })
+        .then((att) => patch(key, { status: 'done', progress: 1, att }))
+        .catch((e) => {
+          if (ctl.signal.aborted) return
+          patch(key, { status: 'error', error: errorMessage(e, 'Upload failed') })
+        })
+        .finally(() => aborts.current.delete(key))
+    }
+    queue.current = queue.current.then(run)
   }, [])
 
   const add = useCallback(

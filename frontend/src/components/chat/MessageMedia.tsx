@@ -178,7 +178,9 @@ export default function MessageMedia({
                 'relative block cursor-zoom-in overflow-hidden bg-black/10',
                 images.length === 1
                   ? 'max-h-80 w-72 max-w-full'
-                  : 'aspect-square w-36 md:w-40',
+                  : images.length === 3 && idx === 2
+                    ? 'col-span-2 aspect-video w-full'
+                    : 'aspect-square w-36 md:w-40',
               )}
             >
               <img
