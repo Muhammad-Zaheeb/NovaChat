@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import * as socket from '../ws/socket'
+import { displayName } from '../lib'
 import { chatApi, type Conversation, type ConversationDetail, type Message } from '../api'
 
 /** The user can actually see this window: visible AND focused (two windows side by side are both visible). */
@@ -15,6 +16,7 @@ export interface Pending {
   content: string
   created_at: string
   status: 'sending' | 'failed'
+  reply_to_id?: number
 }
 
 interface Thread {
@@ -32,6 +34,15 @@ interface ChatState {
   listLoaded: boolean
   /** conversation currently open in the UI */
   activeId: number | null
+  /** Composer state for the open conversation. */
+  replyTo: Message | null
+  editing: Message | null
+  setReplyTo: (m: Message | null) => void
+  setEditing: (m: Message | null) => void
+  /** conversation -> my read marker when I opened it (drives the "New messages" divider) */
+  readMarker: Record<number, number | null>
+  onMessageUpdated: (m: Message) => void
+  jumpTo: (convId: number, messageId: number) => Promise<boolean>
   setActive: (id: number | null) => void
   /** Set when the viewer was removed from the open conversation; ChatPage navigates away. */
   removedFrom: { id: number; name: string } | null
@@ -45,7 +56,7 @@ interface ChatState {
   loadOlder: (id: number) => Promise<number>
   send: (id: number, content: string) => Promise<void>
   /** Optimistic send over the socket (REST fallback when it is down). */
-  sendLive: (id: number, content: string, retryOf?: string) => void
+  sendLive: (id: number, content: string, retryOf?: string, replyToId?: number) => void
   dropPending: (id: number, clientId: string) => void
   /** Handle a `message.new` event. */
   onMessageEvent: (m: Message & { client_id: string | null }, meId: number) => void
@@ -69,7 +80,52 @@ export const useChat = create<ChatState>((set, get) => ({
   listLoaded: false,
   pending: {},
   activeId: null,
-  setActive: (id) => set({ activeId: id }),
+  replyTo: null,
+  editing: null,
+  readMarker: {},
+  setReplyTo: (m) => set({ replyTo: m, editing: null }),
+  setEditing: (m) => set({ editing: m, replyTo: null }),
+  setActive: (id) =>
+    set((s) => {
+      const prev = s.activeId
+      const readMarker = { ...s.readMarker }
+      if (prev && prev !== id) delete readMarker[prev]
+      return { activeId: id, replyTo: null, editing: null, readMarker }
+    }),
+  onMessageUpdated: (m) => {
+    set((s) => {
+      const t = s.threads[m.conversation_id]
+      const c = s.conversations[m.conversation_id]
+      return {
+        threads: t
+          ? { ...s.threads, [m.conversation_id]: { ...t, items: merge(t.items, [m]) } }
+          : s.threads,
+        conversations:
+          c?.last_message?.id === m.id
+            ? { ...s.conversations, [c.id]: { ...c, last_message: m } }
+            : s.conversations,
+        // an edit/delete of the message being replied to or edited ends that state
+        replyTo: s.replyTo?.id === m.id ? (m.deleted ? null : m) : s.replyTo,
+        editing: s.editing?.id === m.id && m.deleted ? null : s.editing,
+      }
+    })
+  },
+  jumpTo: async (convId, messageId) => {
+    for (let i = 0; i < 40; i++) {
+      const t = get().threads[convId]
+      if (t?.items.some((m) => m.id === messageId)) {
+        requestAnimationFrame(() => {
+          const el = document.getElementById(`msg-${messageId}`)
+          el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+          el?.classList.add('flash-highlight')
+          setTimeout(() => el?.classList.remove('flash-highlight'), 1800)
+        })
+        return true
+      }
+      if (!t?.hasMore || !(await get().loadOlder(convId))) break
+    }
+    return false
+  },
   removedFrom: null,
   clearRemoved: () => set({ removedFrom: null }),
 
@@ -105,7 +161,16 @@ export const useChat = create<ChatState>((set, get) => ({
     }),
 
   openConversation: async (id) => {
-    if (!get().details[id]) await get().loadDetail(id)
+    await get().loadDetail(id)
+    if (!(id in get().readMarker)) {
+      const c = get().details[id]
+      set((s) => ({
+        readMarker: {
+          ...s.readMarker,
+          [id]: c.unread_count > 0 ? (c.last_read_message_id ?? 0) : null,
+        },
+      }))
+    }
     const msgs = await chatApi.messages(id, undefined, PAGE)
     set((s) => {
       const prev = s.threads[id]?.items ?? []
@@ -144,8 +209,11 @@ export const useChat = create<ChatState>((set, get) => ({
     get().receiveMessage(m, { own: true, active: true })
   },
 
-  sendLive: (id, content, retryOf) => {
+  sendLive: (id, content, retryOf, replyToId) => {
     const { dropPending } = get()
+    replyToId ??= retryOf
+      ? get().pending[id]?.find((p) => p.client_id === retryOf)?.reply_to_id
+      : undefined
     if (retryOf) dropPending(id, retryOf)
     const client_id = crypto.randomUUID()
     const setStatus = (status: Pending['status']) =>
@@ -168,15 +236,21 @@ export const useChat = create<ChatState>((set, get) => ({
             content,
             created_at: new Date().toISOString(),
             status: 'sending',
+            reply_to_id: replyToId,
           },
         ],
       },
     }))
-    if (socket.send('message.send', { conversation_id: id, content, client_id })) {
+    if (socket.send('message.send', {
+        conversation_id: id,
+        content,
+        client_id,
+        reply_to_id: replyToId,
+      })) {
       setTimeout(() => setStatus('failed'), ECHO_TIMEOUT_MS)
     } else {
       chatApi
-        .send(id, content)
+        .send(id, content, replyToId)
         .then((m) => {
           get().dropPending(id, client_id)
           get().receiveMessage(m, { own: true, active: true })
@@ -263,6 +337,9 @@ export const useChat = create<ChatState>((set, get) => ({
       pending: {},
       listLoaded: false,
       activeId: null,
+      replyTo: null,
+      editing: null,
+      readMarker: {},
     }),
 }))
 
@@ -274,5 +351,5 @@ export function conversationTitle(
 ): string {
   if (c.type === 'group') return c.name ?? 'Group'
   const other = detail?.members.find((m) => m.user.id !== meId)
-  return other?.user.username ?? '…'
+  return other ? displayName(other.user) : '…'
 }

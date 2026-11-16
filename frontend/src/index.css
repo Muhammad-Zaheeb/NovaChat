@@ -24,3 +24,16 @@ body {
 body {
   @apply bg-white text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
 }
+
+.flash-highlight {
+  animation: flash 1.8s ease-out;
+}
+@keyframes flash {
+  0%,
+  60% {
+    background-color: rgb(250 204 21 / 0.35);
+  }
+  100% {
+    background-color: transparent;
+  }
+}

@@ -1,5 +1,6 @@
-import { useLayoutEffect, useRef, useState } from 'react'
-import type { Message } from '../api'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { chatApi, errorMessage, REACTIONS, type Message } from '../api'
+import { toast } from '../store/toast'
 import { clockTime, dayLabel } from '../lib'
 import { useChat } from '../store/chat'
 import { useLive } from '../store/live'
@@ -14,12 +15,47 @@ interface Props {
 }
 
 const GROUP_GAP_MS = 5 * 60 * 1000
+const EDIT_MS = 15 * 60 * 1000
+
+function ActionBtn({
+  label,
+  onClick,
+  children,
+}: {
+  label: string
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      className="h-7 w-7 rounded-full text-sm text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700"
+    >
+      {children}
+    </button>
+  )
+}
 
 export default function MessageList({ convId, meId, isGroup, names }: Props) {
   const thread = useChat((s) => s.threads[convId])
   const loadOlder = useChat((s) => s.loadOlder)
   const pending = useChat((s) => s.pending[convId])
   const sendLive = useChat((s) => s.sendLive)
+  const readMarker = useChat((s) => s.readMarker[convId])
+  const jumpTo = useChat((s) => s.jumpTo)
+  const setReplyTo = useChat((s) => s.setReplyTo)
+  const setEditing = useChat((s) => s.setEditing)
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(t)
+  }, [])
+  const [picker, setPicker] = useState<number | null>(null)
+  const react = (m: Message, emoji: string) =>
+    chatApi.react(convId, m.id, emoji).catch((e) => toast(errorMessage(e)))
   const reads = useLive((s) => s.reads[convId])
   const [missed, setMissed] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
@@ -103,6 +139,10 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
   const seenMsg = items.findLast((m) => m.sender_id === meId && m.id <= maxRead)
   const seenCount = seenMsg ? others.filter(([, id]) => id >= seenMsg.id).length : 0
 
+  const marker = readMarker
+  const firstUnreadId =
+    marker == null ? undefined : items.find((x) => x.id > marker && x.sender_id !== meId)?.id
+
   const rows: React.ReactNode[] = []
   items.forEach((m: Message, i) => {
     const before = items[i - 1]
@@ -133,26 +173,119 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
           {dayLabel(m.created_at)}
         </div>,
       )
+    if (firstUnreadId === m.id)
+      rows.push(
+        <div
+          key={`u${m.id}`}
+          role="separator"
+          className="my-3 flex items-center gap-2 text-xs font-semibold text-red-600 dark:text-red-400"
+        >
+          <span className="h-px flex-1 bg-current opacity-40" />
+          New messages
+          <span className="h-px flex-1 bg-current opacity-40" />
+        </div>,
+      )
+    const deleted = !!m.deleted
+    const canEdit = mine && !deleted && now - new Date(m.created_at).getTime() < EDIT_MS
     rows.push(
       <div
+        id={`msg-${m.id}`}
         key={m.id}
-        className={`flex flex-col ${mine ? 'items-end' : 'items-start'} ${sameAsBefore ? 'mt-0.5' : 'mt-3'}`}
+        className={`group flex flex-col ${mine ? 'items-end' : 'items-start'} ${sameAsBefore ? 'mt-0.5' : 'mt-3'}`}
       >
         {isGroup && !mine && !sameAsBefore && (
           <span className="mb-0.5 ml-3 text-xs font-medium text-brand-600 dark:text-indigo-400">
             {names[m.sender_id] ?? 'Unknown'}
           </span>
         )}
-        <div
-          title={new Date(m.created_at).toLocaleString()}
-          className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-3 py-2 text-sm [overflow-wrap:anywhere] whitespace-pre-wrap ${
-            mine
-              ? 'bg-brand-600 text-white'
-              : 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100'
-          }`}
-        >
-          <Linkify text={m.content} />
+        <div className={`flex max-w-[85%] items-center gap-1 md:max-w-[75%] ${mine ? 'flex-row-reverse' : ''}`}>
+          <div
+            title={new Date(m.created_at).toLocaleString()}
+            className={`rounded-2xl px-3 py-2 text-sm [overflow-wrap:anywhere] whitespace-pre-wrap ${
+              deleted
+                ? 'border border-slate-300 italic text-slate-500 dark:border-slate-700 dark:text-slate-400'
+                : mine
+                  ? 'bg-brand-600 text-white'
+                  : 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100'
+            }`}
+          >
+            {m.reply_to && !deleted && (
+              <button
+                type="button"
+                onClick={() => void jumpTo(convId, m.reply_to!.id)}
+                className="mb-1 block w-full rounded border-l-4 border-current/50 bg-black/10 px-2 py-1 text-left text-xs opacity-90"
+              >
+                <span className="font-semibold">
+                  {m.reply_to.sender_id === meId ? 'You' : (names[m.reply_to.sender_id] ?? 'Unknown')}
+                </span>
+                <span className="block truncate">
+                  {m.reply_to.deleted ? 'Message deleted' : m.reply_to.content}
+                </span>
+              </button>
+            )}
+            {deleted ? 'Message deleted' : <Linkify text={m.content} />}
+            {m.edited_at && !deleted && (
+              <span className="ml-1 text-[10px] opacity-70">(edited)</span>
+            )}
+          </div>
+          {!deleted && (
+            <div className="flex shrink-0 gap-0.5 opacity-0 transition group-focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
+              <ActionBtn label="Reply" onClick={() => setReplyTo(m)}>
+                ↩
+              </ActionBtn>
+              <ActionBtn label="React" onClick={() => setPicker(picker === m.id ? null : m.id)}>
+                ☺
+              </ActionBtn>
+              {canEdit && (
+                <ActionBtn label="Edit" onClick={() => setEditing(m)}>
+                  ✎
+                </ActionBtn>
+              )}
+              {mine && (
+                <ActionBtn
+                  label="Delete"
+                  onClick={() => {
+                    if (confirm('Delete this message for everyone?'))
+                      void chatApi.remove(convId, m.id).catch((e) => toast(errorMessage(e)))
+                  }}
+                >
+                  🗑
+                </ActionBtn>
+              )}
+            </div>
+          )}
         </div>
+        {picker === m.id && (
+          <div role="menu" className="mt-1 flex gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 shadow dark:border-slate-700 dark:bg-slate-900">
+            {REACTIONS.map((e) => (
+              <button
+                key={e}
+                aria-label={`React ${e}`}
+                className="h-8 w-8 rounded-full text-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                onClick={() => {
+                  setPicker(null)
+                  void react(m, e)
+                }}
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+        )}
+        {!!m.reactions?.length && (
+          <div className="mt-1 flex flex-wrap gap-1">
+            {m.reactions.map((r) => (
+              <button
+                key={r.emoji}
+                onClick={() => void react(m, r.emoji)}
+                title={r.user_ids.map((u) => (u === meId ? 'You' : (names[u] ?? 'Someone'))).join(', ')}
+                className={`rounded-full border px-2 py-0.5 text-xs ${r.user_ids.includes(meId) ? 'border-brand-500 bg-brand-50 dark:bg-slate-800' : 'border-slate-300 dark:border-slate-700'}`}
+              >
+                {r.emoji} {r.user_ids.length}
+              </button>
+            ))}
+          </div>
+        )}
         {seenMsg?.id === m.id && (
           <span className="mx-2 mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
             {isGroup ? `Seen by ${seenCount}` : 'Seen'}

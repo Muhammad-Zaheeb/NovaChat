@@ -111,7 +111,7 @@ export default function GroupInfoDialog({
               online={m.user.id === me.id || !!online[m.user.id]}
             />
             <span className="min-w-0 flex-1 truncate text-sm">
-              {m.user.username}
+              {m.user.display_name || m.user.username}
               {m.user.id === me.id && ' (you)'}
             </span>
             {m.role === 'admin' && (

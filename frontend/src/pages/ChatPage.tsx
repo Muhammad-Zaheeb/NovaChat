@@ -5,9 +5,13 @@ import GroupInfoDialog from '../components/GroupInfoDialog'
 import Composer from '../components/Composer'
 import MessageList from '../components/MessageList'
 import FriendsView from '../components/FriendsView'
+import ProfileView from '../components/ProfileView'
+import MessageSearch from '../components/MessageSearch'
 import Sidebar from '../components/Sidebar'
 import NotFound from '../components/NotFound'
 import { Avatar, Button } from '../components/ui'
+import { chatApi } from '../api'
+import { displayName, lastSeenText } from '../lib'
 import { useAuth } from '../store/auth'
 import { conversationTitle, useChat } from '../store/chat'
 import { useFriends } from '../store/friends'
@@ -43,6 +47,8 @@ function Conversation({ id }: { id: number }) {
   const conv = useChat((s) => s.conversations[id])
   const detail = useChat((s) => s.details[id])
   const online = useLive((s) => s.online)
+  const lastSeen = useLive((s) => s.lastSeen)
+  const [searching, setSearching] = useState(false)
   const typingIds = useLive((s) => s.typing[id])
   const lastId = useChat((s) => s.threads[id]?.items.at(-1)?.id)
   const { openConversation, markRead, listLoaded, setActive } = useChat()
@@ -108,7 +114,7 @@ function Conversation({ id }: { id: number }) {
       : undefined
   const otherOnline = otherId !== undefined && !!online[otherId]
   const names = Object.fromEntries(
-    (detail?.members ?? []).map((m) => [m.user.id, m.user.username]),
+    (detail?.members ?? []).map((m) => [m.user.id, displayName(m.user)]),
   )
   return (
     <>
@@ -138,21 +144,51 @@ function Conversation({ id }: { id: number }) {
               <div
                 className={`text-xs ${otherOnline ? 'text-green-700 dark:text-green-400' : 'text-slate-500 dark:text-slate-400'}`}
               >
-                {otherOnline ? 'online' : 'offline'}
+                {otherOnline
+                  ? 'online'
+                  : lastSeenText(
+                      lastSeen[otherId] ??
+                        detail?.members.find((m) => m.user.id === otherId)?.user.last_seen_at,
+                    )}
               </div>
             )
           )}
         </div>
+        <div className="ml-auto flex items-center">
+          <button
+            onClick={() => setSearching((v) => !v)}
+            aria-label="Search messages"
+            className="h-10 rounded-lg px-3 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            Search
+          </button>
+          <button
+            onClick={() =>
+              void chatApi.mute(id, !conv.muted).then(() =>
+                useChat.setState((s) => ({
+                  conversations: { ...s.conversations, [id]: { ...s.conversations[id], muted: !conv.muted } },
+                })),
+              )
+            }
+            aria-label={conv.muted ? 'Unmute conversation' : 'Mute conversation'}
+            className="h-10 rounded-lg px-3 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            {conv.muted ? 'Unmute' : 'Mute'}
+          </button>
         {conv.type === 'group' && (
           <button
             onClick={() => setInfo(true)}
             aria-label="Group info"
-            className="ml-auto h-10 rounded-lg px-3 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="h-10 rounded-lg px-3 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             Info
           </button>
         )}
+        </div>
       </header>
+      {searching && (
+        <MessageSearch convId={id} names={names} onClose={() => setSearching(false)} />
+      )}
       {info && <GroupInfoDialog convId={id} onClose={() => setInfo(false)} />}
       <MessageList
         convId={id}
@@ -165,7 +201,7 @@ function Conversation({ id }: { id: number }) {
   )
 }
 
-export default function ChatPage({ view }: { view?: 'friends' }) {
+export default function ChatPage({ view }: { view?: 'friends' | 'profile' }) {
   const { id } = useParams()
   const { theme, toggle } = useTheme()
   const reset = useChat((s) => s.reset)
@@ -212,7 +248,9 @@ export default function ChatPage({ view }: { view?: 'friends' }) {
           <Sidebar theme={theme} toggleTheme={toggle} />
         </div>
         <main className={`${id || view ? 'flex' : 'hidden md:flex'} min-w-0 flex-1 flex-col`}>
-          {view === 'friends' ? (
+          {view === 'profile' ? (
+            <ProfileView />
+          ) : view === 'friends' ? (
             <FriendsView />
           ) : id ? (
             Number.isInteger(Number(id)) ? (

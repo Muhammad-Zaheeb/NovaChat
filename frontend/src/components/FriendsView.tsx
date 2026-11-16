@@ -79,7 +79,7 @@ export default function FriendsView() {
               {friends.map((f) => (
                 <li key={f.id} className="flex min-h-14 items-center gap-3 py-1">
                   <Avatar name={f.username} size={36} online={online[f.id] ?? f.online} />
-                  <span className="min-w-0 flex-1 truncate text-sm">{f.username}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm">{f.display_name || f.username}</span>
                   {confirm === f.id ? (
                     <>
                       <Button
@@ -124,7 +124,7 @@ export default function FriendsView() {
                 <li key={r.id} className="flex min-h-14 items-center gap-3 py-1">
                   <Avatar name={r.requester.username} size={36} />
                   <span className="min-w-0 flex-1 truncate text-sm">
-                    {r.requester.username}
+                    {r.requester.display_name || r.requester.username}
                   </span>
                   <Button
                     className={small}

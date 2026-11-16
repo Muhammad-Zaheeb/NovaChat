@@ -12,13 +12,24 @@ export interface ServerEvents {
   'friend.request': { id: number; user: { id: number; username: string } }
   'friend.accepted': { id: number; user: { id: number; username: string } }
   'friend.removed': { user_id: number; request_id?: number }
-  presence: { user_id: number; online: boolean }
+  presence: { user_id: number; online: boolean; last_seen_at?: string | null }
+  'message.updated': Message
+  'user.updated': {
+    id: number
+    username: string
+    display_name: string | null
+    bio: string | null
+  }
+  'conversation.muted': { conversation_id: number; muted: boolean }
   error: { code: string; detail: string }
   pong: Record<string, never>
 }
 
 export interface ClientEvents {
-  'message.send': { conversation_id: number; content: string; client_id: string }
+  'message.send': { conversation_id: number; content: string
+    client_id: string
+    reply_to_id?: number
+  }
   'typing.start': { conversation_id: number }
   'typing.stop': { conversation_id: number }
   'message.read': { conversation_id: number; message_id: number }

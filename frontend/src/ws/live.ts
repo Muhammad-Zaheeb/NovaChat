@@ -1,6 +1,8 @@
 import { useAuth } from '../store/auth'
 import { useLive } from '../store/live'
-import { useChat } from '../store/chat'
+import { isAttentive, useChat } from '../store/chat'
+import { displayName } from '../lib'
+import { notifyMessage } from '../notify'
 import { usersApi } from '../api'
 import { useFriends } from '../store/friends'
 import { toast } from '../store/toast'
@@ -35,6 +37,7 @@ export function startLive(): () => void {
     socket.on('presence', (e) => {
       known.add(e.user_id)
       useLive.getState().setOnline({ [e.user_id]: e.online })
+      if (e.last_seen_at) useLive.getState().setLastSeen(e.user_id, e.last_seen_at)
     }),
   )
 
@@ -54,6 +57,50 @@ export function startLive(): () => void {
     socket.on('message.new', (m) => {
       const me = useAuth.getState().user
       if (me) useChat.getState().onMessageEvent(m, me.id)
+      if (me && m.sender_id !== me.id && !isAttentive()) {
+        const chat = useChat.getState()
+        const c = chat.conversations[m.conversation_id]
+        if (!c || c.muted) return
+        const sender = chat.details[c.id]?.members.find((x) => x.user.id === m.sender_id)
+        const who = sender ? displayName(sender.user) : 'New message'
+        notifyMessage(c.type === 'group' ? `${who} in ${c.name ?? 'group'}` : who, m.content, () => {
+          window.location.assign(`/c/${c.id}`)
+        })
+      }
+    }),
+  )
+  offs.push(socket.on('message.updated', (m) => useChat.getState().onMessageUpdated(m)))
+  offs.push(
+    socket.on('conversation.muted', (e) =>
+      useChat.setState((s) => {
+        const c = s.conversations[e.conversation_id]
+        return c
+          ? { conversations: { ...s.conversations, [c.id]: { ...c, muted: e.muted } } }
+          : s
+      }),
+    ),
+  )
+  offs.push(
+    socket.on('user.updated', (u) => {
+      const me = useAuth.getState().user
+      if (me?.id === u.id)
+        useAuth.setState({ user: { ...me, display_name: u.display_name, bio: u.bio } })
+      useChat.setState((s) => ({
+        details: Object.fromEntries(
+          Object.entries(s.details).map(([k, d]) => [
+            k,
+            {
+              ...d,
+              members: d.members.map((m) =>
+                m.user.id === u.id
+                  ? { ...m, user: { ...m.user, display_name: u.display_name, bio: u.bio } }
+                  : m,
+              ),
+            },
+          ]),
+        ),
+      }))
+      void useFriends.getState().load().catch(() => {})
     }),
   )
   offs.push(

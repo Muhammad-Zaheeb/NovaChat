@@ -13,6 +13,8 @@ export const authApi = {
   resendCode: (email: string) => api.post('/auth/resend-code', { email }),
   logout: () => api.post('/auth/logout'),
   me: () => api.get<User>('/auth/me').then((r) => r.data),
+  updateProfile: (b: { display_name: string; bio: string }) =>
+    api.patch<User>('/users/me', b).then((r) => r.data),
 }
 
 export const usersApi = {
@@ -43,8 +45,23 @@ export const chatApi = {
     api
       .get<Message[]>(`/conversations/${id}/messages`, { params: { before, limit } })
       .then((r) => r.data),
-  send: (id: number, content: string) =>
-    api.post<Message>(`/conversations/${id}/messages`, { content }).then((r) => r.data),
+  send: (id: number, content: string, reply_to_id?: number) =>
+    api
+      .post<Message>(`/conversations/${id}/messages`, { content, reply_to_id })
+      .then((r) => r.data),
+  edit: (id: number, mid: number, content: string) =>
+    api.patch<Message>(`/conversations/${id}/messages/${mid}`, { content }).then((r) => r.data),
+  remove: (id: number, mid: number) =>
+    api.delete<Message>(`/conversations/${id}/messages/${mid}`).then((r) => r.data),
+  react: (id: number, mid: number, emoji: string) =>
+    api
+      .post<Message>(`/conversations/${id}/messages/${mid}/reactions`, { emoji })
+      .then((r) => r.data),
+  search: (id: number, q: string) =>
+    api
+      .get<Message[]>(`/conversations/${id}/messages`, { params: { q, limit: 30 } })
+      .then((r) => r.data),
+  mute: (id: number, muted: boolean) => api.put(`/conversations/${id}/mute`, { muted }),
   read: (id: number, message_id: number) =>
     api.post<{ last_read_message_id: number | null }>(`/conversations/${id}/read`, {
       message_id,

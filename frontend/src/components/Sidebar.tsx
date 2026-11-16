@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { formatTime } from '../lib'
+import { displayName, formatTime } from '../lib'
 import { useAuth } from '../store/auth'
 import { conversationTitle, useChat } from '../store/chat'
 import { useFriends } from '../store/friends'
@@ -130,7 +130,7 @@ export default function Sidebar({
           sorted.map((c) => {
             const title = conversationTitle(c, details[c.id], me.id)
             const names = Object.fromEntries(
-              (details[c.id]?.members ?? []).map((m) => [m.user.id, m.user.username]),
+              (details[c.id]?.members ?? []).map((m) => [m.user.id, displayName(m.user)]),
             )
             const typingHint = typingText(typing[c.id], names)
             return (
@@ -153,7 +153,10 @@ export default function Sidebar({
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex justify-between gap-2">
-                    <span className="truncate font-medium">{title}</span>
+                    <span className="truncate font-medium">
+                      {title}
+                      {c.muted && <span title="Muted"> 🔕</span>}
+                    </span>
                     {c.last_message && (
                       <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">
                         {formatTime(c.last_message.created_at)}
@@ -184,7 +187,13 @@ export default function Sidebar({
       </nav>
       <div className="flex items-center gap-3 border-t border-slate-200 p-3 dark:border-slate-800">
         <Avatar name={me.username} size={32} />
-        <span className="flex-1 truncate text-sm font-medium">{me.username}</span>
+        <NavLink
+          to="/profile"
+          title="Profile & settings"
+          className="flex-1 truncate text-sm font-medium hover:underline"
+        >
+          {me.display_name || me.username}
+        </NavLink>
         <button
           onClick={() => void logout()}
           className="h-10 rounded-lg px-3 text-sm text-slate-600 hover:text-red-600 dark:text-slate-400"

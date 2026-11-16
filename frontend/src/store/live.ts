@@ -10,6 +10,8 @@ interface LiveState {
   setRead: (conv: number, user: number, messageId: number) => void
   /** user id -> online */
   online: Record<number, boolean>
+  lastSeen: Record<number, string>
+  setLastSeen: (id: number, iso: string) => void
   setOnline: (m: Record<number, boolean>) => void
   setTyping: (conv: number, user: number, on: boolean) => void
   reset: () => void
@@ -20,10 +22,12 @@ const timers = new Map<string, ReturnType<typeof setTimeout>>()
 export const useLive = create<LiveState>((set, get) => ({
   typing: {},
   online: {},
+  lastSeen: {},
+  setLastSeen: (id, iso) => set((s) => ({ lastSeen: { ...s.lastSeen, [id]: iso } })),
   reset: () => {
     timers.forEach(clearTimeout)
     timers.clear()
-    set({ typing: {}, reads: {}, online: {} })
+    set({ typing: {}, reads: {}, online: {}, lastSeen: {} })
   },
   setOnline: (m) => set((s) => ({ online: { ...s.online, ...m } })),
   reads: {},
