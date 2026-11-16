@@ -2,6 +2,7 @@
 Keys are always generated server-side (see new_key); nothing user-controlled reaches a path."""
 import asyncio
 import secrets
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import AsyncIterator, Protocol
 
@@ -20,6 +21,7 @@ class Storage(Protocol):
     async def delete(self, key: str) -> None: ...
     async def size(self, key: str) -> int: ...
     def iter_range(self, key: str, start: int, end: int) -> AsyncIterator[bytes]: ...
+    async def list(self, prefix: str) -> list[tuple[str, datetime]]: ...
 
 
 class LocalStorage:
@@ -46,6 +48,21 @@ class LocalStorage:
 
     async def size(self, key: str) -> int:
         return (await asyncio.to_thread(self._path(key).stat)).st_size
+
+    async def list(self, prefix: str) -> list[tuple[str, datetime]]:
+        """(key, last-modified) for every object under prefix."""
+        base = self._path(prefix)
+
+        def walk():
+            if not base.is_dir():
+                return []
+            return [
+                (p.relative_to(self.root).as_posix(), datetime.fromtimestamp(p.stat().st_mtime, timezone.utc))
+                for p in base.rglob("*")
+                if p.is_file()
+            ]
+
+        return await asyncio.to_thread(walk)
 
     async def iter_range(self, key: str, start: int, end: int) -> AsyncIterator[bytes]:
         """Bytes start..end inclusive."""
@@ -90,6 +107,16 @@ class S3Storage:
     async def size(self, key: str) -> int:
         head = await asyncio.to_thread(self.client.head_object, Bucket=self.bucket, Key=key)
         return head["ContentLength"]
+
+    async def list(self, prefix: str) -> list[tuple[str, datetime]]:
+        def walk():
+            out = []
+            pages = self.client.get_paginator("list_objects_v2").paginate(Bucket=self.bucket, Prefix=prefix)
+            for page in pages:
+                out += [(o["Key"], o["LastModified"]) for o in page.get("Contents", [])]
+            return out
+
+        return await asyncio.to_thread(walk)
 
     async def iter_range(self, key: str, start: int, end: int) -> AsyncIterator[bytes]:
         obj = await asyncio.to_thread(
