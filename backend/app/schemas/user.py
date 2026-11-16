@@ -1,4 +1,6 @@
-from pydantic import BaseModel, ConfigDict, EmailStr
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class UserOut(BaseModel):
@@ -7,6 +9,9 @@ class UserOut(BaseModel):
     id: int
     username: str
     email: EmailStr
+    display_name: str | None = None
+    bio: str | None = None
+    last_seen_at: datetime | None = None
 
 
 class UserPublic(BaseModel):
@@ -16,7 +21,21 @@ class UserPublic(BaseModel):
 
     id: int
     username: str
+    display_name: str | None = None
+    bio: str | None = None
+    last_seen_at: datetime | None = None
 
 
-class UserSearchResult(UserPublic):
+class UserSearchResult(BaseModel):
+    """No last_seen_at: strangers must not see activity."""
+
+    id: int
+    username: str
+    display_name: str | None = None
+    bio: str | None = None
     friendship_status: str = "none"  # none | pending_outgoing | pending_incoming | friends
+
+
+class ProfileUpdate(BaseModel):
+    display_name: str | None = Field(default=None, max_length=50)
+    bio: str | None = Field(default=None, max_length=200)

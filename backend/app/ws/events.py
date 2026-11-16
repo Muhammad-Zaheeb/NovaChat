@@ -13,6 +13,9 @@ PING = "ping"
 
 # server -> client
 MESSAGE_NEW = "message.new"
+MESSAGE_UPDATED = "message.updated"  # edit, delete or reaction change: carries the full message
+USER_UPDATED = "user.updated"
+CONVERSATION_MUTED = "conversation.muted"  # only to the user who muted (their other tabs)
 TYPING = "typing"
 PRESENCE = "presence"
 FRIEND_REQUEST = "friend.request"
@@ -27,6 +30,7 @@ class MessageSend(BaseModel):
     conversation_id: int
     content: str = Field(min_length=1, max_length=4000)
     client_id: str | None = Field(default=None, max_length=64)
+    reply_to_id: int | None = None
 
 
 class TypingIn(BaseModel):

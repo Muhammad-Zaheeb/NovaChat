@@ -1,5 +1,6 @@
 import json
 import time
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, WebSocket
 from pydantic import ValidationError
@@ -60,7 +61,9 @@ async def _message_send(ws: WebSocket, user_id: int, payload: dict) -> None:
     async with SessionLocal() as db:  # fresh session per event
         try:
             me = await db.get(User, user_id)
-            msg = await chat.send_message(db, me, data.conversation_id, data.content)
+            msg = await chat.send_message(
+                db, me, data.conversation_id, data.content, data.reply_to_id
+            )
         except ChatError as e:
             await ws.send_json(events.error(_code(e), e.detail))
             return
@@ -129,7 +132,15 @@ HANDLERS = {
 
 async def _presence(user_id: int, online: bool) -> None:
     async with SessionLocal() as db:
-        await notify.publish_presence(db, user_id, online)
+        seen = None
+        if not online:
+            user = await db.get(User, user_id)
+            if user:
+                now = datetime.now(timezone.utc)
+                user.last_seen_at = now
+                await db.commit()
+                seen = now.isoformat()
+        await notify.publish_presence(db, user_id, online, seen)
 
 
 @router.websocket("/ws")

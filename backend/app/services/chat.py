@@ -1,6 +1,8 @@
 """Chat business logic. Raises ChatError (no HTTP types) so it can be reused
 from WebSocket handlers; routers translate to HTTP."""
-from sqlalchemy import func, select
+from datetime import datetime, timedelta, timezone
+
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, selectinload
 
@@ -10,7 +12,8 @@ from app.models.conversation import (
     ConversationType,
     MemberRole,
 )
-from app.models.message import Message, MessageType
+from app.models.message import Message, MessageReaction, MessageType
+from app.schemas.chat import MessageOut, ReactionOut, ReplyPreview
 from app.models.user import User
 from app.services import friends
 
@@ -210,10 +213,19 @@ async def remove_member(db: AsyncSession, me: User, conv_id: int, user_id: int) 
     await db.commit()
 
 
-async def send_message(db: AsyncSession, me: User, conv_id: int, content: str) -> Message:
+async def send_message(
+    db: AsyncSession, me: User, conv_id: int, content: str, reply_to_id: int | None = None
+) -> Message:
     mine = await require_member(db, conv_id, me.id)
+    if reply_to_id is not None:
+        ok = await db.scalar(
+            select(Message.id).where(Message.id == reply_to_id, Message.conversation_id == conv_id)
+        )
+        if ok is None:
+            raise ChatError(404, "Replied-to message not found")
     msg = Message(
-        conversation_id=conv_id, sender_id=me.id, content=content, type=MessageType.text
+        conversation_id=conv_id, sender_id=me.id, content=content, type=MessageType.text,
+        reply_to_id=reply_to_id,
     )
     db.add(msg)
     await db.flush()
@@ -224,12 +236,15 @@ async def send_message(db: AsyncSession, me: User, conv_id: int, content: str) -
 
 
 async def list_messages(
-    db: AsyncSession, me: User, conv_id: int, before: int | None, limit: int
+    db: AsyncSession, me: User, conv_id: int, before: int | None, limit: int,
+    search: str | None = None,
 ) -> list[Message]:
+    """Deleted messages are included (as tombstones) except when searching."""
     await require_member(db, conv_id, me.id)
-    q = select(Message).where(
-        Message.conversation_id == conv_id, Message.deleted_at.is_(None)
-    )
+    q = select(Message).where(Message.conversation_id == conv_id)
+    if search:
+        pat = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        q = q.where(Message.deleted_at.is_(None), Message.content.ilike(f"%{pat}%", escape="\\"))
     if before is not None:
         q = q.where(Message.id < before)
     return list(await db.scalars(q.order_by(Message.id.desc()).limit(min(max(limit, 1), 100))))
@@ -267,3 +282,139 @@ async def peer_ids(db: AsyncSession, user_id: int) -> list[int]:
             .distinct()
         )
     )
+
+
+# ---- message features: replies, edit/delete, reactions, search, mute ----
+
+EDIT_WINDOW = timedelta(minutes=15)
+REACTIONS = ("👍", "❤️", "😂", "😮", "😢", "🙏")
+
+
+async def serialize(db: AsyncSession, msgs: list[Message]) -> list[MessageOut]:
+    """MessageOut with reply preview and grouped reactions, using two batched queries."""
+    if not msgs:
+        return []
+    ids = [m.id for m in msgs]
+    reply_ids = {m.reply_to_id for m in msgs if m.reply_to_id}
+    replies = {}
+    if reply_ids:
+        replies = {m.id: m for m in await db.scalars(select(Message).where(Message.id.in_(reply_ids)))}
+    grouped: dict[int, dict[str, list[int]]] = {}
+    rows = await db.execute(
+        select(MessageReaction.message_id, MessageReaction.emoji, MessageReaction.user_id)
+        .where(MessageReaction.message_id.in_(ids))
+        .order_by(MessageReaction.id)
+    )
+    for mid, emoji, uid in rows:
+        grouped.setdefault(mid, {}).setdefault(emoji, []).append(uid)
+    out = []
+    for m in msgs:
+        deleted = m.deleted_at is not None
+        r = replies.get(m.reply_to_id) if m.reply_to_id else None
+        out.append(
+            MessageOut(
+                id=m.id,
+                conversation_id=m.conversation_id,
+                sender_id=m.sender_id,
+                content="" if deleted else m.content,
+                type=m.type,
+                created_at=m.created_at,
+                edited_at=m.edited_at,
+                deleted=deleted,
+                reply_to=ReplyPreview(
+                    id=r.id,
+                    sender_id=r.sender_id,
+                    content="" if r.deleted_at else r.content[:140],
+                    deleted=r.deleted_at is not None,
+                )
+                if r
+                else None,
+                reactions=[
+                    ReactionOut(emoji=e, user_ids=u)
+                    for e, u in ({} if deleted else grouped.get(m.id, {})).items()
+                ],
+            )
+        )
+    return out
+
+
+async def _own_message(db: AsyncSession, me: User, conv_id: int, msg_id: int) -> Message:
+    await require_member(db, conv_id, me.id)
+    msg = await db.scalar(
+        select(Message).where(Message.id == msg_id, Message.conversation_id == conv_id)
+    )
+    if msg is None:
+        raise ChatError(404, "Message not found")
+    return msg
+
+
+async def edit_message(db: AsyncSession, me: User, conv_id: int, msg_id: int, content: str) -> Message:
+    msg = await _own_message(db, me, conv_id, msg_id)
+    if msg.sender_id != me.id:
+        raise ChatError(403, "You can only edit your own messages")
+    if msg.deleted_at is not None:
+        raise ChatError(409, "Message was deleted")
+    if datetime.now(timezone.utc) - msg.created_at > EDIT_WINDOW:
+        raise ChatError(403, "Messages can only be edited within 15 minutes")
+    msg.content = content
+    msg.edited_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(msg)
+    return msg
+
+
+async def delete_message(db: AsyncSession, me: User, conv_id: int, msg_id: int) -> Message:
+    msg = await _own_message(db, me, conv_id, msg_id)
+    if msg.sender_id != me.id:
+        raise ChatError(403, "You can only delete your own messages")
+    if msg.deleted_at is None:
+        msg.deleted_at = datetime.now(timezone.utc)
+        await db.execute(delete(MessageReaction).where(MessageReaction.message_id == msg.id))
+        await db.commit()
+        await db.refresh(msg)
+    return msg
+
+
+async def toggle_reaction(
+    db: AsyncSession, me: User, conv_id: int, msg_id: int, emoji: str
+) -> Message:
+    if emoji not in REACTIONS:
+        raise ChatError(400, "Unsupported reaction")
+    msg = await _own_message(db, me, conv_id, msg_id)
+    if msg.deleted_at is not None:
+        raise ChatError(409, "Message was deleted")
+    existing = await db.scalar(
+        select(MessageReaction).where(
+            MessageReaction.message_id == msg_id,
+            MessageReaction.user_id == me.id,
+            MessageReaction.emoji == emoji,
+        )
+    )
+    if existing:
+        await db.delete(existing)
+    else:
+        db.add(MessageReaction(message_id=msg_id, user_id=me.id, emoji=emoji))
+    await db.commit()
+    return msg
+
+
+async def set_muted(db: AsyncSession, me: User, conv_id: int, muted: bool) -> None:
+    mine = await require_member(db, conv_id, me.id)
+    mine.muted = muted
+    await db.commit()
+
+
+async def member_state(
+    db: AsyncSession, user_id: int, conv_ids: list[int]
+) -> dict[int, tuple[bool, int | None]]:
+    """conversation -> (muted, last_read_message_id) for this viewer."""
+    if not conv_ids:
+        return {}
+    rows = await db.execute(
+        select(
+            ConversationMember.conversation_id,
+            ConversationMember.muted,
+            ConversationMember.last_read_message_id,
+        ).where(ConversationMember.user_id == user_id, ConversationMember.conversation_id.in_(conv_ids))
+    )
+    return {c: (m, r) for c, m, r in rows}

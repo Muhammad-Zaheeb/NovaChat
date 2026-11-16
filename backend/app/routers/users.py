@@ -4,8 +4,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.session import get_db
 from app.dependencies import get_current_user
 from app.models.user import User
-from app.schemas.user import UserSearchResult
+from app.schemas.user import ProfileUpdate, UserOut, UserSearchResult
 from app.services import chat, friends, users
+from app.ws import notify
 from app.ws.manager import manager
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -21,7 +22,7 @@ async def search_users(
     found = await users.search_users(db, me, q, limit)
     st = await friends.statuses(db, me.id, [u.id for u in found])
     return [
-        UserSearchResult(id=u.id, username=u.username, friendship_status=st.get(u.id, "none"))
+        UserSearchResult(id=u.id, username=u.username, display_name=u.display_name, bio=u.bio, friendship_status=st.get(u.id, "none"))
         for u in found
     ]
 
@@ -39,3 +40,16 @@ async def online_users(
         raise HTTPException(status_code=422, detail="ids must be comma-separated integers")
     wanted &= set(await chat.peer_ids(db, me.id)) | {me.id}
     return {"online": sorted(await manager.filter_online(wanted))}
+
+
+@router.patch("/me", response_model=UserOut)
+async def update_profile(
+    data: ProfileUpdate, db: AsyncSession = Depends(get_db), me: User = Depends(get_current_user)
+):
+    """Display name and bio. Blank strings clear the field."""
+    me.display_name = (data.display_name or "").strip() or None
+    me.bio = (data.bio or "").strip() or None
+    await db.commit()
+    await db.refresh(me)
+    await notify.publish_user_updated(db, me)
+    return me

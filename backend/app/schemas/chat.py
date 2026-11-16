@@ -22,6 +22,19 @@ class MemberAdd(BaseModel):
 
 class MessageCreate(BaseModel):
     content: str = Field(min_length=1, max_length=4000)
+    reply_to_id: int | None = None
+
+
+class MessageEdit(BaseModel):
+    content: str = Field(min_length=1, max_length=4000)
+
+
+class ReactionToggle(BaseModel):
+    emoji: str = Field(min_length=1, max_length=16)
+
+
+class MuteSet(BaseModel):
+    muted: bool
 
 
 class ReadMark(BaseModel):
@@ -40,6 +53,18 @@ class MemberOut(BaseModel):
     joined_at: datetime
 
 
+class ReplyPreview(BaseModel):
+    id: int
+    sender_id: int
+    content: str
+    deleted: bool = False
+
+
+class ReactionOut(BaseModel):
+    emoji: str
+    user_ids: list[int]
+
+
 class MessageOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -50,6 +75,9 @@ class MessageOut(BaseModel):
     type: MessageType
     created_at: datetime
     edited_at: datetime | None = None
+    deleted: bool = False
+    reply_to: ReplyPreview | None = None
+    reactions: list[ReactionOut] = Field(default_factory=list)
 
 
 class ConversationOut(BaseModel):
@@ -62,6 +90,8 @@ class ConversationOut(BaseModel):
     created_at: datetime
     last_message: MessageOut | None = None
     unread_count: int = 0
+    muted: bool = False
+    last_read_message_id: int | None = None
 
 
 class ConversationDetail(ConversationOut):

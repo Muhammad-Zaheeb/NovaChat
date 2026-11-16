@@ -152,13 +152,14 @@ async def test_presence_online_offline(ws_url, users):
         assert r.json() == {"online": []}
         async with open_ws(ws_url, users["bob"]) as b1:
             ev = await recv(a)
-            assert ev == {"type": "presence", "payload": {"user_id": bid, "online": True}}
+            assert ev == {"type": "presence", "payload": {"user_id": bid, "online": True, "last_seen_at": None}}
             async with open_ws(ws_url, users["bob"]):  # second tab: no new event
                 await silent(a)
             await silent(a)  # still online with one tab left
             assert (await users["alice"].get(f"/users/online?ids={bid}")).json() == {"online": [bid]}
         ev = await recv(a)
-        assert ev["payload"] == {"user_id": bid, "online": False}
+        assert ev["payload"]["user_id"] == bid and ev["payload"]["online"] is False
+        assert ev["payload"]["last_seen_at"]
     assert conv
 
 
