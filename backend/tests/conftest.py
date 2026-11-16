@@ -51,7 +51,7 @@ def _storage(tmp_path):
 
 
 def make_client() -> AsyncClient:
-    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test/api")
 
 
 def last_code(email: str) -> str:

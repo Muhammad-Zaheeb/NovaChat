@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, WebSocket
 from pydantic import ValidationError
 
+from urllib.parse import urlsplit
+
 from app.core.config import settings
 from app.database.session import SessionLocal
 from app.models.user import User
@@ -21,7 +23,7 @@ async def _authenticate(ws: WebSocket) -> int | None:
     """Validate Origin and cookie JWT before accepting; closes with 4401 on failure."""
     origin = ws.headers.get("origin")
     # browsers always send Origin; reject foreign ones (cross-site WS hijacking)
-    if origin is not None and origin not in settings.CORS_ORIGINS:
+    if origin is not None and origin not in settings.CORS_ORIGINS and urlsplit(origin).netloc != ws.headers.get("host"):
         await ws.close(code=4403)
         return None
     try:

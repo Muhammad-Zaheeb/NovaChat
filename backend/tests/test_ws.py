@@ -21,7 +21,7 @@ async def ws_url():
     while not server.started:
         await asyncio.sleep(0.01)
     port = server.servers[0].sockets[0].getsockname()[1]
-    yield f"ws://127.0.0.1:{port}/ws"
+    yield f"ws://127.0.0.1:{port}/api/ws"
     server.should_exit = True
     await task
 

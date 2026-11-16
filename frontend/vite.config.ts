@@ -7,12 +7,7 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8000',
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
-      '/ws': { target: 'ws://localhost:8000', ws: true },
-    },
+    // API and WebSocket both live under /api on the backend (same layout as production).
+    proxy: { '/api': { target: 'http://localhost:8000', ws: true } },
   },
 })

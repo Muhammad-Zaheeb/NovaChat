@@ -1,11 +1,15 @@
 """Outgoing email. Backend chosen by settings.EMAIL_BACKEND:
   console - log the message (development default)
   smtp    - real delivery over STARTTLS (e.g. smtp.gmail.com:587)
+  brevo   - Brevo transactional HTTP API (for hosts that block outbound SMTP)
   memory  - collect in `outbox` (tests)
 """
 import logging
 import smtplib
+from email.utils import parseaddr
 from email.message import EmailMessage
+
+import httpx
 
 from app.core.config import settings
 
@@ -23,6 +27,26 @@ def _build(to: str, subject: str, text: str, html: str) -> EmailMessage:
     return msg
 
 
+def _send_brevo(to: str, subject: str, text: str, html: str) -> None:
+    name, address = parseaddr(settings.EMAIL_FROM)
+    sender = {"email": address}
+    if name:
+        sender["name"] = name
+    r = httpx.post(
+        "https://api.brevo.com/v3/smtp/email",
+        headers={"api-key": settings.BREVO_API_KEY, "accept": "application/json"},
+        json={
+            "sender": sender,
+            "to": [{"email": to}],
+            "subject": subject,
+            "htmlContent": html,
+            "textContent": text,
+        },
+        timeout=15,
+    )
+    r.raise_for_status()
+
+
 def send_email(to: str, subject: str, text: str, html: str, code: str | None = None) -> None:
     """Blocking; call from a background task. Never raises (failures are logged)."""
     backend = settings.EMAIL_BACKEND
@@ -33,6 +57,8 @@ def send_email(to: str, subject: str, text: str, html: str, code: str | None = N
                 s.starttls()
                 s.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
                 s.send_message(msg)
+        elif backend == "brevo":
+            _send_brevo(to, subject, text, html)
         elif backend == "memory":
             outbox.append({"to": to, "subject": subject, "text": text, "code": code})
         else:

@@ -24,7 +24,7 @@ from app.core.config import settings
 from app.database.base import Base
 import app.models  # noqa: F401
 
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("%", "%%"))
+config.set_main_option("sqlalchemy.url", settings.async_database_url.replace("%", "%%"))
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

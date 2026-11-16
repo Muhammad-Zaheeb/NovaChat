@@ -1,4 +1,4 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core import email as mailer
 from app.core.config import settings
 from app.core.disposable import is_disposable
+from app.core.ratelimit import client_ip, enforce, limiter
 from app.core.security import create_access_token, hash_password, verify_password
 from app.database.session import get_db
 from app.dependencies import COOKIE_NAME, get_current_user
@@ -26,8 +27,12 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 @router.post("/register", response_model=UserOut, status_code=201)
 async def register(
-    data: RegisterRequest, background: BackgroundTasks, db: AsyncSession = Depends(get_db)
+    data: RegisterRequest,
+    request: Request,
+    background: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
 ):
+    enforce(f"register:ip:{client_ip(request)}", 20, 3600)
     email = data.email.lower()
     if is_disposable(email):
         raise HTTPException(status_code=400, detail="Disposable email addresses are not allowed")
@@ -56,7 +61,10 @@ async def register(
 
 
 @router.post("/verify-email")
-async def verify_email(data: VerifyEmailRequest, db: AsyncSession = Depends(get_db)):
+async def verify_email(
+    data: VerifyEmailRequest, request: Request, db: AsyncSession = Depends(get_db)
+):
+    enforce(f"verify:ip:{client_ip(request)}", 30, 900)
     user = await db.scalar(select(User).where(User.email == data.email.lower()))
     try:
         await verification.check_code(db, user, data.code)
@@ -67,8 +75,12 @@ async def verify_email(data: VerifyEmailRequest, db: AsyncSession = Depends(get_
 
 @router.post("/resend-code")
 async def resend_code(
-    data: ResendCodeRequest, background: BackgroundTasks, db: AsyncSession = Depends(get_db)
+    data: ResendCodeRequest,
+    request: Request,
+    background: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
 ):
+    enforce(f"resend:ip:{client_ip(request)}", 20, 900)
     """Always answers 200 for unknown or already-verified emails (no account probing);
     429 only when an unverified account hits its resend limits."""
     user = await db.scalar(select(User).where(User.email == data.email.lower()))
@@ -83,8 +95,13 @@ async def resend_code(
 
 @router.post("/forgot-password")
 async def forgot_password(
-    data: ForgotPasswordRequest, background: BackgroundTasks, db: AsyncSession = Depends(get_db)
+    data: ForgotPasswordRequest,
+    request: Request,
+    background: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
 ):
+    enforce(f"forgot:ip:{client_ip(request)}", 10, 900)
+    enforce(f"forgot:email:{data.email.lower()}", 5, 900)
     """Always 200: never reveals whether the email has an account (or hit a resend limit)."""
     user = await db.scalar(select(User).where(User.email == data.email.lower()))
     if user is not None:
@@ -97,7 +114,11 @@ async def forgot_password(
 
 
 @router.post("/reset-password")
-async def reset_password(data: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+async def reset_password(
+    data: ResetPasswordRequest, request: Request, db: AsyncSession = Depends(get_db)
+):
+    enforce(f"reset:ip:{client_ip(request)}", 20, 900)
+    enforce(f"reset:email:{data.email.lower()}", 10, 900)
     user = await db.scalar(select(User).where(User.email == data.email.lower()))
     try:
         await verification.reset_password(db, user, data.code, data.new_password)
@@ -107,10 +128,17 @@ async def reset_password(data: ResetPasswordRequest, db: AsyncSession = Depends(
 
 
 @router.post("/login")
-async def login(data: LoginRequest, response: Response, db: AsyncSession = Depends(get_db)):
+async def login(
+    data: LoginRequest, request: Request, response: Response, db: AsyncSession = Depends(get_db)
+):
+    email_key = f"login:email:{data.email.lower()}"
+    enforce(f"login:ip:{client_ip(request)}", 20, 60)  # every attempt counts
+    enforce(email_key, 5, 900, count=False)  # only failures count (below)
     user = await db.scalar(select(User).where(User.email == data.email.lower()))
     if user is None or not verify_password(data.password, user.hashed_password):
+        limiter.hit(email_key, 900)
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    limiter.clear(email_key)
     if not user.email_verified:
         raise HTTPException(status_code=403, detail="email_not_verified")
 

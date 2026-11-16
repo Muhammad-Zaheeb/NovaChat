@@ -8,7 +8,14 @@ router = APIRouter(tags=["Health"])
 
 
 @router.get("/health")
-async def health(db: AsyncSession = Depends(get_db)):
+async def health():
+    """Liveness only. Deliberately skips the database so a host's frequent health checks
+    don't keep a scale-to-zero Postgres (Neon free) awake all month."""
+    return {"status": "ok"}
+
+
+@router.get("/health/db")
+async def health_db(db: AsyncSession = Depends(get_db)):
     try:
         await db.execute(text("SELECT 1"))
     except Exception:

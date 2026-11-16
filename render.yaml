@@ -1,0 +1,46 @@
+# Render Blueprint (free plan). Secrets are marked sync:false: set them in the dashboard.
+services:
+  - type: web
+    name: novachat
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: ENV
+        value: production
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: TRUST_PROXY
+        value: "true"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL        # Neon direct connection string
+        sync: false
+      - key: CORS_ORIGINS        # JSON list, e.g. ["https://novachat.onrender.com"]
+        sync: false
+      - key: EMAIL_BACKEND       # smtp | brevo
+        value: smtp
+      - key: EMAIL_FROM
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: STORAGE_BACKEND
+        value: s3
+      - key: S3_ENDPOINT_URL
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: SENTRY_DSN
+        sync: false

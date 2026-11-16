@@ -62,7 +62,7 @@ function stopPing() {
 
 function connect() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-  const sock = new WebSocket(`${proto}://${location.host}/ws`)
+  const sock = new WebSocket(`${proto}://${location.host}/api/ws`)
   ws = sock
   setStatus(hasOpened ? 'down' : 'connecting')
 
