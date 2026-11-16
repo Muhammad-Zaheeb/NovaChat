@@ -11,7 +11,9 @@ function highlight(text: string, q: string): ReactNode {
   return (
     <>
       {text.slice(0, i)}
-      <mark className="rounded bg-yellow-300 text-black">{text.slice(i, i + q.length)}</mark>
+      <mark className="rounded bg-yellow-300 text-black">
+        {text.slice(i, i + q.length)}
+      </mark>
       {text.slice(i + q.length)}
     </>
   )
@@ -58,7 +60,11 @@ export default function MessageSearch({
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => e.key === 'Escape' && onClose()}
         />
-        <button onClick={onClose} aria-label="Close search" className="h-10 w-10 rounded-lg">
+        <button
+          onClick={onClose}
+          aria-label="Close search"
+          className="h-10 w-10 rounded-lg"
+        >
           ✕
         </button>
       </div>
@@ -76,7 +82,8 @@ export default function MessageSearch({
                 className="block w-full rounded px-2 py-1.5 text-left hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <span className="text-xs text-slate-500 dark:text-slate-400">
-                  {names[m.sender_id] ?? 'Unknown'} · {dayLabel(m.created_at)} {clockTime(m.created_at)}
+                  {names[m.sender_id] ?? 'Unknown'} · {dayLabel(m.created_at)}{' '}
+                  {clockTime(m.created_at)}
                 </span>
                 <span className="block truncate">{highlight(m.content, q.trim())}</span>
               </button>

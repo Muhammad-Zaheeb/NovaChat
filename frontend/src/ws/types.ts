@@ -26,7 +26,9 @@ export interface ServerEvents {
 }
 
 export interface ClientEvents {
-  'message.send': { conversation_id: number; content: string
+  'message.send': {
+    conversation_id: number
+    content: string
     client_id: string
     reply_to_id?: number
   }

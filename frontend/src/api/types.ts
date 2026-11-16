@@ -60,7 +60,8 @@ export interface ConversationDetail extends Conversation {
   members: Member[]
 }
 
-export type FriendshipStatus = 'none' | 'pending_outgoing' | 'pending_incoming' | 'friends'
+export type FriendshipStatus =
+  'none' | 'pending_outgoing' | 'pending_incoming' | 'friends'
 export interface Friend extends UserPublic {
   online: boolean
 }

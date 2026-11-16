@@ -74,7 +74,10 @@ function applyIdentity(next: User | null) {
   if (next?.id === cur?.id) return
   useAuth.setState({ user: next })
   if (next && cur)
-    toast(`You signed in as ${next.username} in another tab. This tab now shows ${next.username}.`, 'info')
+    toast(
+      `You signed in as ${next.username} in another tab. This tab now shows ${next.username}.`,
+      'info',
+    )
   else if (!next && cur) toast('You were signed out in another tab.', 'info')
 }
 

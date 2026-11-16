@@ -1,5 +1,13 @@
 import { api } from './client'
-import type { Friend, FriendRequest, Conversation, ConversationDetail, Message, User, UserPublic } from './types'
+import type {
+  Friend,
+  FriendRequest,
+  Conversation,
+  ConversationDetail,
+  Message,
+  User,
+  UserPublic,
+} from './types'
 
 export * from './types'
 export { errorMessage, setUnauthorizedHandler } from './client'
@@ -50,7 +58,9 @@ export const chatApi = {
       .post<Message>(`/conversations/${id}/messages`, { content, reply_to_id })
       .then((r) => r.data),
   edit: (id: number, mid: number, content: string) =>
-    api.patch<Message>(`/conversations/${id}/messages/${mid}`, { content }).then((r) => r.data),
+    api
+      .patch<Message>(`/conversations/${id}/messages/${mid}`, { content })
+      .then((r) => r.data),
   remove: (id: number, mid: number) =>
     api.delete<Message>(`/conversations/${id}/messages/${mid}`).then((r) => r.data),
   react: (id: number, mid: number, emoji: string) =>

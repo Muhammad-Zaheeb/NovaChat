@@ -63,9 +63,13 @@ export function startLive(): () => void {
         if (!c || c.muted) return
         const sender = chat.details[c.id]?.members.find((x) => x.user.id === m.sender_id)
         const who = sender ? displayName(sender.user) : 'New message'
-        notifyMessage(c.type === 'group' ? `${who} in ${c.name ?? 'group'}` : who, m.content, () => {
-          window.location.assign(`/c/${c.id}`)
-        })
+        notifyMessage(
+          c.type === 'group' ? `${who} in ${c.name ?? 'group'}` : who,
+          m.content,
+          () => {
+            window.location.assign(`/c/${c.id}`)
+          },
+        )
       }
     }),
   )
@@ -93,14 +97,20 @@ export function startLive(): () => void {
               ...d,
               members: d.members.map((m) =>
                 m.user.id === u.id
-                  ? { ...m, user: { ...m.user, display_name: u.display_name, bio: u.bio } }
+                  ? {
+                      ...m,
+                      user: { ...m.user, display_name: u.display_name, bio: u.bio },
+                    }
                   : m,
               ),
             },
           ]),
         ),
       }))
-      void useFriends.getState().load().catch(() => {})
+      void useFriends
+        .getState()
+        .load()
+        .catch(() => {})
     }),
   )
   offs.push(
@@ -154,7 +164,11 @@ export function startLive(): () => void {
         void chat.loadDetail(e.conversation_id).catch(() => {})
     }),
   )
-  const reloadFriends = () => void useFriends.getState().load().catch(() => {})
+  const reloadFriends = () =>
+    void useFriends
+      .getState()
+      .load()
+      .catch(() => {})
   offs.push(
     socket.on('friend.request', (e) => {
       reloadFriends()

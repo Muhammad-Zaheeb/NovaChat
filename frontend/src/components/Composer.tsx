@@ -68,7 +68,9 @@ export default function Composer({ convId }: { convId: number }) {
       setEditing(null)
       setText('')
       if (content !== editing.content)
-        chatApi.edit(convId, id, content).catch((e) => toast(errorMessage(e, 'Could not edit')))
+        chatApi
+          .edit(convId, id, content)
+          .catch((e) => toast(errorMessage(e, 'Could not edit')))
       return
     }
     sendLive(convId, content, undefined, replyTo?.id)

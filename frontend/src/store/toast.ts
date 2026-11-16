@@ -19,7 +19,11 @@ export const useToasts = create<ToastState>((set) => ({
 }))
 
 /** Show a toast; identical text already on screen is not duplicated. */
-export function toast(text: string, kind: Toast['kind'] = 'error', action?: Toast['action']) {
+export function toast(
+  text: string,
+  kind: Toast['kind'] = 'error',
+  action?: Toast['action'],
+) {
   const { toasts, dismiss } = useToasts.getState()
   if (toasts.some((t) => t.text === text)) return
   const id = nextId++

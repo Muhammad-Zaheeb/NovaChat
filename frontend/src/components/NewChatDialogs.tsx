@@ -82,11 +82,7 @@ export function NewGroupDialog({ onClose }: { onClose: () => void }) {
             ))}
           </div>
         )}
-        <UserPicker
-          onPick={toggle}
-          selectedIds={members.map((m) => m.id)}
-          friendsOnly
-        />
+        <UserPicker onPick={toggle} selectedIds={members.map((m) => m.id)} friendsOnly />
         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
         <Button onClick={create} disabled={busy} className="w-full">
           {busy ? 'Creating…' : 'Create group'}

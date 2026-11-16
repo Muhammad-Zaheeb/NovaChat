@@ -78,7 +78,9 @@ export default function UserPicker({
             renderAction ? (
               <li key={u.id} className="flex min-h-12 items-center gap-3 p-2">
                 <Avatar name={u.username} size={32} />
-                <span className="flex-1 truncate text-sm">{u.display_name || u.username}</span>
+                <span className="flex-1 truncate text-sm">
+                  {u.display_name || u.username}
+                </span>
                 {renderAction(u)}
               </li>
             ) : (

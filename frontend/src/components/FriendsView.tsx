@@ -55,7 +55,10 @@ export default function FriendsView() {
         </Link>
         <h2 className="font-semibold">Friends</h2>
       </header>
-      <div role="tablist" className="flex gap-1 border-b border-slate-200 px-4 dark:border-slate-800">
+      <div
+        role="tablist"
+        className="flex gap-1 border-b border-slate-200 px-4 dark:border-slate-800"
+      >
         {tabs.map(([k, label]) => (
           <button
             key={k}
@@ -79,7 +82,9 @@ export default function FriendsView() {
               {friends.map((f) => (
                 <li key={f.id} className="flex min-h-14 items-center gap-3 py-1">
                   <Avatar name={f.username} size={36} online={online[f.id] ?? f.online} />
-                  <span className="min-w-0 flex-1 truncate text-sm">{f.display_name || f.username}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm">
+                    {f.display_name || f.username}
+                  </span>
                   {confirm === f.id ? (
                     <>
                       <Button
@@ -128,13 +133,17 @@ export default function FriendsView() {
                   </span>
                   <Button
                     className={small}
-                    onClick={() => void act(() => friendsApi.accept(r.id), 'Could not accept')}
+                    onClick={() =>
+                      void act(() => friendsApi.accept(r.id), 'Could not accept')
+                    }
                   >
                     Accept
                   </Button>
                   <Button
                     className={ghost}
-                    onClick={() => void act(() => friendsApi.decline(r.id), 'Could not decline')}
+                    onClick={() =>
+                      void act(() => friendsApi.decline(r.id), 'Could not decline')
+                    }
                   >
                     Decline
                   </Button>
@@ -154,7 +163,9 @@ export default function FriendsView() {
                   </span>
                   <Button
                     className={ghost}
-                    onClick={() => void act(() => friendsApi.cancel(r.id), 'Could not cancel')}
+                    onClick={() =>
+                      void act(() => friendsApi.cancel(r.id), 'Could not cancel')
+                    }
                   >
                     Cancel
                   </Button>
@@ -163,9 +174,7 @@ export default function FriendsView() {
             </ul>
           </>
         ) : (
-          <UserPicker
-            renderAction={(u) => <FriendActions user={u} />}
-          />
+          <UserPicker renderAction={(u) => <FriendActions user={u} />} />
         )}
       </div>
     </div>

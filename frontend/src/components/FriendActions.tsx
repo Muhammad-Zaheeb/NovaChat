@@ -49,7 +49,9 @@ export default function FriendActions({
       <Button
         className={small}
         disabled={busy || !req}
-        onClick={() => req && void run(() => friendsApi.accept(req.id), 'Could not accept')}
+        onClick={() =>
+          req && void run(() => friendsApi.accept(req.id), 'Could not accept')
+        }
       >
         Accept
       </Button>

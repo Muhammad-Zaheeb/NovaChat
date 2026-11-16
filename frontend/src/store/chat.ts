@@ -241,12 +241,14 @@ export const useChat = create<ChatState>((set, get) => ({
         ],
       },
     }))
-    if (socket.send('message.send', {
+    if (
+      socket.send('message.send', {
         conversation_id: id,
         content,
         client_id,
         reply_to_id: replyToId,
-      })) {
+      })
+    ) {
       setTimeout(() => setStatus('failed'), ECHO_TIMEOUT_MS)
     } else {
       chatApi

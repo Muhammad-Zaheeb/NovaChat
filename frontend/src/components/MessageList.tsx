@@ -141,7 +141,9 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
 
   const marker = readMarker
   const firstUnreadId =
-    marker == null ? undefined : items.find((x) => x.id > marker && x.sender_id !== meId)?.id
+    marker == null
+      ? undefined
+      : items.find((x) => x.id > marker && x.sender_id !== meId)?.id
 
   const rows: React.ReactNode[] = []
   items.forEach((m: Message, i) => {
@@ -198,7 +200,9 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
             {names[m.sender_id] ?? 'Unknown'}
           </span>
         )}
-        <div className={`flex max-w-[85%] items-center gap-1 md:max-w-[75%] ${mine ? 'flex-row-reverse' : ''}`}>
+        <div
+          className={`flex max-w-[85%] items-center gap-1 md:max-w-[75%] ${mine ? 'flex-row-reverse' : ''}`}
+        >
           <div
             title={new Date(m.created_at).toLocaleString()}
             className={`rounded-2xl px-3 py-2 text-sm [overflow-wrap:anywhere] whitespace-pre-wrap ${
@@ -216,7 +220,9 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
                 className="mb-1 block w-full rounded border-l-4 border-current/50 bg-black/10 px-2 py-1 text-left text-xs opacity-90"
               >
                 <span className="font-semibold">
-                  {m.reply_to.sender_id === meId ? 'You' : (names[m.reply_to.sender_id] ?? 'Unknown')}
+                  {m.reply_to.sender_id === meId
+                    ? 'You'
+                    : (names[m.reply_to.sender_id] ?? 'Unknown')}
                 </span>
                 <span className="block truncate">
                   {m.reply_to.deleted ? 'Message deleted' : m.reply_to.content}
@@ -233,7 +239,10 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
               <ActionBtn label="Reply" onClick={() => setReplyTo(m)}>
                 ↩
               </ActionBtn>
-              <ActionBtn label="React" onClick={() => setPicker(picker === m.id ? null : m.id)}>
+              <ActionBtn
+                label="React"
+                onClick={() => setPicker(picker === m.id ? null : m.id)}
+              >
                 ☺
               </ActionBtn>
               {canEdit && (
@@ -246,7 +255,9 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
                   label="Delete"
                   onClick={() => {
                     if (confirm('Delete this message for everyone?'))
-                      void chatApi.remove(convId, m.id).catch((e) => toast(errorMessage(e)))
+                      void chatApi
+                        .remove(convId, m.id)
+                        .catch((e) => toast(errorMessage(e)))
                   }}
                 >
                   🗑
@@ -256,7 +267,10 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
           )}
         </div>
         {picker === m.id && (
-          <div role="menu" className="mt-1 flex gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 shadow dark:border-slate-700 dark:bg-slate-900">
+          <div
+            role="menu"
+            className="mt-1 flex gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 shadow dark:border-slate-700 dark:bg-slate-900"
+          >
             {REACTIONS.map((e) => (
               <button
                 key={e}
@@ -278,7 +292,9 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
               <button
                 key={r.emoji}
                 onClick={() => void react(m, r.emoji)}
-                title={r.user_ids.map((u) => (u === meId ? 'You' : (names[u] ?? 'Someone'))).join(', ')}
+                title={r.user_ids
+                  .map((u) => (u === meId ? 'You' : (names[u] ?? 'Someone')))
+                  .join(', ')}
                 className={`rounded-full border px-2 py-0.5 text-xs ${r.user_ids.includes(meId) ? 'border-brand-500 bg-brand-50 dark:bg-slate-800' : 'border-slate-300 dark:border-slate-700'}`}
               >
                 {r.emoji} {r.user_ids.length}

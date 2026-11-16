@@ -7,9 +7,12 @@ import MessageList from '../components/MessageList'
 import FriendsView from '../components/FriendsView'
 import ProfileView from '../components/ProfileView'
 import MessageSearch from '../components/MessageSearch'
-import Sidebar from '../components/Sidebar'
+import ConversationList from '../components/ConversationList'
+import QuickSwitcher from '../components/QuickSwitcher'
+import { BottomTabs, ConnectionBanner, NavRail } from '../components/shell/Nav'
 import NotFound from '../components/NotFound'
-import { Avatar, Button } from '../components/ui'
+import { Avatar, Button, EmptyState, Kbd, modKey } from '../components/ui'
+import { MessagesSquare } from 'lucide-react'
 import { chatApi } from '../api'
 import { displayName, lastSeenText } from '../lib'
 import { useAuth } from '../store/auth'
@@ -17,9 +20,8 @@ import { conversationTitle, useChat } from '../store/chat'
 import { useFriends } from '../store/friends'
 import { typingText, useLive } from '../store/live'
 import { startLive } from '../ws/live'
-import { useConn } from '../ws/socket'
 import { toast } from '../store/toast'
-import { useTheme } from '../store/theme'
+import { useOnboarding } from '../store/onboarding'
 
 function Conversation({ id }: { id: number }) {
   const me = useAuth((s) => s.user)!
@@ -186,9 +188,7 @@ function Conversation({ id }: { id: number }) {
 
 export default function ChatPage({ view }: { view?: 'friends' | 'profile' }) {
   const { id } = useParams()
-  const theme = useTheme((s) => s.resolved)
-  const setPref = useTheme((s) => s.setPref)
-  const toggle = () => setPref(theme === 'dark' ? 'light' : 'dark')
+  const me = useAuth((s) => s.user)!
   const reset = useChat((s) => s.reset)
   useEffect(
     () => () => {
@@ -199,6 +199,13 @@ export default function ChatPage({ view }: { view?: 'friends' | 'profile' }) {
     [reset],
   )
   useEffect(() => startLive(), [])
+  useEffect(() => useOnboarding.getState().init(me.id), [me.id])
+  useEffect(() => {
+    void useFriends
+      .getState()
+      .load()
+      .catch(() => {})
+  }, [])
   const unread = useChat((s) =>
     Object.values(s.conversations).reduce((n, c) => n + c.unread_count, 0),
   )
@@ -212,30 +219,37 @@ export default function ChatPage({ view }: { view?: 'friends' | 'profile' }) {
   const navigate = useNavigate()
   useEffect(() => {
     if (!removedFrom) return
-    toast(`You are no longer a member of ${removedFrom.name}`)
+    toast(`You are no longer a member of ${removedFrom.name}`, 'info')
     useChat.getState().clearRemoved()
     navigate('/', { replace: true })
   }, [removedFrom, navigate])
-  const down = useConn((s) => s.status === 'down')
 
+  // Global shortcut: Cmd/Ctrl+K opens the quick switcher from anywhere.
+  const [switcher, setSwitcher] = useState(false)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setSwitcher((v) => !v)
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
+
+  const chats = !view
   return (
-    <div className="flex h-full flex-col">
-      {down && (
-        <div
-          role="status"
-          className="bg-amber-500 py-0.5 text-center text-xs font-medium text-slate-900"
-        >
-          Reconnecting…
-        </div>
-      )}
+    <div className="flex h-full flex-col bg-bg">
+      <ConnectionBanner />
       <div className="flex min-h-0 flex-1">
-        <div
-          className={`${id || view ? 'hidden md:flex' : 'flex'} h-full w-full md:w-auto`}
-        >
-          <Sidebar theme={theme} toggleTheme={toggle} />
-        </div>
+        <NavRail />
+        {chats && (
+          <div className={`${id ? 'hidden md:flex' : 'flex'} h-full w-full md:w-auto`}>
+            <ConversationList onQuickSwitch={() => setSwitcher(true)} />
+          </div>
+        )}
         <main
-          className={`${id || view ? 'flex' : 'hidden md:flex'} min-w-0 flex-1 flex-col`}
+          className={`${chats && !id ? 'hidden md:flex' : 'flex'} min-w-0 flex-1 flex-col bg-bg`}
         >
           {view === 'profile' ? (
             <ProfileView />
@@ -248,12 +262,19 @@ export default function ChatPage({ view }: { view?: 'friends' | 'profile' }) {
               <NotFound message="Conversation not found" />
             )
           ) : (
-            <div className="flex flex-1 items-center justify-center text-slate-500 dark:text-slate-400">
-              Select a conversation or start a new chat
-            </div>
+            <EmptyState
+              icon={MessagesSquare}
+              title="Pick up a conversation"
+              className="flex-1"
+            >
+              Choose a chat from the list, or press <Kbd>{modKey}</Kbd> <Kbd>K</Kbd> to
+              jump to anyone.
+            </EmptyState>
           )}
         </main>
       </div>
+      {!id && <BottomTabs />}
+      {switcher && <QuickSwitcher onClose={() => setSwitcher(false)} />}
     </div>
   )
 }

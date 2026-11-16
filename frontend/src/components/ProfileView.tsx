@@ -17,7 +17,10 @@ export default function ProfileView() {
   const save = async () => {
     setBusy(true)
     try {
-      const u = await authApi.updateProfile({ display_name: name.trim(), bio: bio.trim() })
+      const u = await authApi.updateProfile({
+        display_name: name.trim(),
+        bio: bio.trim(),
+      })
       useAuth.setState({ user: u })
       toast('Profile saved', 'info')
     } catch (e) {
@@ -46,7 +49,9 @@ export default function ProfileView() {
           <Avatar name={me.username} size={56} />
           <div>
             <div className="font-semibold">{me.display_name || me.username}</div>
-            <div className="text-sm text-slate-500 dark:text-slate-400">@{me.username}</div>
+            <div className="text-sm text-slate-500 dark:text-slate-400">
+              @{me.username}
+            </div>
           </div>
         </div>
         <label className="block text-sm font-medium">
@@ -80,7 +85,8 @@ export default function ProfileView() {
             disabled={!notificationsSupported()}
             onChange={(e) => void toggleNotif(e.target.checked)}
           />
-          Desktop notifications and a sound for new messages when this window is not focused
+          Desktop notifications and a sound for new messages when this window is not
+          focused
         </label>
         <p className="text-xs text-slate-500 dark:text-slate-400">
           Mute individual conversations from the chat header.
