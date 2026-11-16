@@ -8,6 +8,7 @@ interface OnboardingState {
   init: (userId: number) => void
   markFind: () => void
   dismiss: () => void
+  reopen: () => void
 }
 
 const key = (id: number) => `novachat-onboarding-${id}`
@@ -44,6 +45,10 @@ export const useOnboarding = create<OnboardingState>((set, get) => ({
   },
   dismiss: () => {
     set({ dismissed: true })
+    save(get())
+  },
+  reopen: () => {
+    set({ dismissed: false })
     save(get())
   },
 }))

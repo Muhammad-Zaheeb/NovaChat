@@ -1,14 +1,13 @@
 import { useState } from 'react'
+import { Check, Clock, MessageSquare, UserPlus } from 'lucide-react'
 import { errorMessage, friendsApi, type UserPublic } from '../api'
+import { displayName } from '../lib'
 import { toast } from '../store/toast'
 import { useFriends, useStatusOf } from '../store/friends'
 import { useMessage } from './useMessage'
 import { Button } from './ui'
 
-const small = 'h-10 !min-h-0 !px-3'
-const ghost = `${small} !bg-slate-200 !text-slate-800 hover:!bg-slate-300 dark:!bg-slate-800 dark:!text-slate-100`
-
-/** The right action button for a user, based on live friendship status. */
+/** The right action for a user, based on live friendship status. */
 export default function FriendActions({
   user,
   onMessaged,
@@ -22,10 +21,11 @@ export default function FriendActions({
   const message = useMessage()
   const [busy, setBusy] = useState(false)
 
-  const run = async (fn: () => Promise<unknown>, fallback: string) => {
+  const run = async (fn: () => Promise<unknown>, fallback: string, ok: string) => {
     setBusy(true)
     try {
       await fn()
+      toast(ok, 'success')
     } catch (e) {
       toast(errorMessage(e, fallback))
     }
@@ -35,22 +35,36 @@ export default function FriendActions({
 
   if (status === 'friends')
     return (
-      <Button className={small} onClick={() => void message(user.id, onMessaged)}>
+      <Button
+        variant="secondary"
+        size="sm"
+        icon={MessageSquare}
+        onClick={() => void message(user.id, onMessaged)}
+      >
         Message
       </Button>
     )
   if (status === 'pending_outgoing')
     return (
-      <span className="px-3 text-sm text-slate-500 dark:text-slate-400">Requested</span>
+      <span className="inline-flex h-8 items-center gap-1.5 px-2 text-sm text-muted">
+        <Clock size={14} aria-hidden /> Request sent
+      </span>
     )
   if (status === 'pending_incoming') {
     const req = incoming.find((r) => r.requester.id === user.id)
     return (
       <Button
-        className={small}
-        disabled={busy || !req}
+        size="sm"
+        icon={Check}
+        loading={busy}
+        disabled={!req}
         onClick={() =>
-          req && void run(() => friendsApi.accept(req.id), 'Could not accept')
+          req &&
+          void run(
+            () => friendsApi.accept(req.id),
+            'Could not accept',
+            `You and ${displayName(user)} are now friends`,
+          )
         }
       >
         Accept
@@ -59,9 +73,16 @@ export default function FriendActions({
   }
   return (
     <Button
-      className={ghost}
-      disabled={busy}
-      onClick={() => void run(() => friendsApi.send(user.id), 'Could not send request')}
+      size="sm"
+      icon={UserPlus}
+      loading={busy}
+      onClick={() =>
+        void run(
+          () => friendsApi.send(user.id),
+          'Could not send request',
+          `Friend request sent to ${displayName(user)}`,
+        )
+      }
     >
       Add friend
     </Button>
