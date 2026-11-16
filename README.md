@@ -1,5 +1,7 @@
 # NovaChat 💬
 
+[![CI](https://github.com/Muhammad-Zaheeb/NovaChat/actions/workflows/ci.yml/badge.svg)](https://github.com/Muhammad-Zaheeb/NovaChat/actions/workflows/ci.yml)
+
 A production-ready real-time messaging platform built with React, FastAPI, PostgreSQL, SQLAlchemy, JWT Authentication, and WebSockets.
 
 ---
