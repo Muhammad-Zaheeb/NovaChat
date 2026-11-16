@@ -127,7 +127,8 @@ function Conversation({ id }: { id: number }) {
                   ? 'online'
                   : lastSeenText(
                       lastSeen[otherId] ??
-                        detail?.members.find((m) => m.user.id === otherId)?.user.last_seen_at,
+                        detail?.members.find((m) => m.user.id === otherId)?.user
+                          .last_seen_at,
                     )}
               </div>
             )
@@ -145,7 +146,10 @@ function Conversation({ id }: { id: number }) {
             onClick={() =>
               void chatApi.mute(id, !conv.muted).then(() =>
                 useChat.setState((s) => ({
-                  conversations: { ...s.conversations, [id]: { ...s.conversations[id], muted: !conv.muted } },
+                  conversations: {
+                    ...s.conversations,
+                    [id]: { ...s.conversations[id], muted: !conv.muted },
+                  },
                 })),
               )
             }
@@ -154,15 +158,15 @@ function Conversation({ id }: { id: number }) {
           >
             {conv.muted ? 'Unmute' : 'Mute'}
           </button>
-        {conv.type === 'group' && (
-          <button
-            onClick={() => setInfo(true)}
-            aria-label="Group info"
-            className="h-10 rounded-lg px-3 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-          >
-            Info
-          </button>
-        )}
+          {conv.type === 'group' && (
+            <button
+              onClick={() => setInfo(true)}
+              aria-label="Group info"
+              className="h-10 rounded-lg px-3 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              Info
+            </button>
+          )}
         </div>
       </header>
       {searching && (
@@ -225,10 +229,14 @@ export default function ChatPage({ view }: { view?: 'friends' | 'profile' }) {
         </div>
       )}
       <div className="flex min-h-0 flex-1">
-        <div className={`${id || view ? 'hidden md:flex' : 'flex'} h-full w-full md:w-auto`}>
+        <div
+          className={`${id || view ? 'hidden md:flex' : 'flex'} h-full w-full md:w-auto`}
+        >
           <Sidebar theme={theme} toggleTheme={toggle} />
         </div>
-        <main className={`${id || view ? 'flex' : 'hidden md:flex'} min-w-0 flex-1 flex-col`}>
+        <main
+          className={`${id || view ? 'flex' : 'hidden md:flex'} min-w-0 flex-1 flex-col`}
+        >
           {view === 'profile' ? (
             <ProfileView />
           ) : view === 'friends' ? (
