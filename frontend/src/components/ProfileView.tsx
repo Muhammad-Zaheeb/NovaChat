@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react'
-import { LogOut, Monitor, Moon, Sun } from 'lucide-react'
+import { useRef, useState, type ReactNode } from 'react'
+import { Camera, LogOut, Monitor, Moon, Sun } from 'lucide-react'
 import { authApi, errorMessage } from '../api'
 import { displayName } from '../lib'
 import { notificationsOn, notificationsSupported, setNotifications } from '../notify'
@@ -7,6 +7,7 @@ import { useAuth } from '../store/auth'
 import { useOnboarding } from '../store/onboarding'
 import { useTheme, type ThemePref } from '../store/theme'
 import { toast } from '../store/toast'
+import AvatarCropDialog from './AvatarCropDialog'
 import PageHeader from './PageHeader'
 import { Avatar, Button, Input, Kbd, Segmented, Switch, Textarea, modKey } from './ui'
 
@@ -47,6 +48,26 @@ export default function ProfileView() {
   const pref = useTheme((s) => s.pref)
   const setPref = useTheme((s) => s.setPref)
   const onboardingDismissed = useOnboarding((s) => s.dismissed)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [cropFile, setCropFile] = useState<File | null>(null)
+  const uploadAvatar = async (blob: Blob) => {
+    try {
+      useAuth.setState({ user: await authApi.setAvatar(blob) })
+      setCropFile(null)
+      toast('Profile picture updated', 'success')
+    } catch (e) {
+      toast(errorMessage(e, 'Could not upload picture'))
+      throw e
+    }
+  }
+  const removeAvatar = async () => {
+    try {
+      useAuth.setState({ user: await authApi.removeAvatar() })
+      toast('Profile picture removed', 'success')
+    } catch (e) {
+      toast(errorMessage(e, 'Could not remove picture'))
+    }
+  }
   const dirty = name.trim() !== (me.display_name ?? '') || bio.trim() !== (me.bio ?? '')
 
   const save = async () => {
@@ -75,6 +96,13 @@ export default function ProfileView() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <PageHeader title="Settings" />
+      {cropFile && (
+        <AvatarCropDialog
+          file={cropFile}
+          onCancel={() => setCropFile(null)}
+          onSave={uploadAvatar}
+        />
+      )}
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 md:px-6">
         <div className="mx-auto max-w-2xl space-y-4">
           <Card title="Profile" description="How you appear to friends and in groups.">
@@ -86,12 +114,41 @@ export default function ProfileView() {
               }}
             >
               <div className="flex items-center gap-4">
-                <Avatar id={me.id} name={displayName(me)} size={56} />
-                <div className="min-w-0">
+                <Avatar id={me.id} name={displayName(me)} size={72} />
+                <div className="min-w-0 flex-1">
                   <div className="truncate font-semibold">{displayName(me)}</div>
                   <div className="truncate text-sm text-muted">
                     @{me.username} · {me.email}
                   </div>
+                  <div className="mt-2 flex gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon={Camera}
+                      onClick={() => fileRef.current?.click()}
+                    >
+                      {me.avatar_url ? 'Change picture' : 'Upload picture'}
+                    </Button>
+                    {me.avatar_url && (
+                      <Button variant="danger-ghost" size="sm" onClick={() => void removeAvatar()}>
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    aria-label="Choose profile picture"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0]
+                      e.target.value = ''
+                      if (!f) return
+                      if (f.size > 5 * 1024 * 1024) toast('Pictures must be under 5 MB')
+                      else setCropFile(f)
+                    }}
+                  />
                 </div>
               </div>
               <Input

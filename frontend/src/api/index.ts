@@ -21,6 +21,12 @@ export const authApi = {
   resendCode: (email: string) => api.post('/auth/resend-code', { email }),
   logout: () => api.post('/auth/logout'),
   me: () => api.get<User>('/auth/me').then((r) => r.data),
+  setAvatar: (file: Blob) => {
+    const f = new FormData()
+    f.append('file', file, 'avatar.jpg')
+    return api.put<User>('/users/me/avatar', f).then((r) => r.data)
+  },
+  removeAvatar: () => api.delete<User>('/users/me/avatar').then((r) => r.data),
   updateProfile: (b: { display_name: string; bio: string }) =>
     api.patch<User>('/users/me', b).then((r) => r.data),
 }

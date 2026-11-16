@@ -19,6 +19,7 @@ export interface ServerEvents {
     username: string
     display_name: string | null
     bio: string | null
+    avatar_url: string | null
   }
   'conversation.muted': { conversation_id: number; muted: boolean }
   error: { code: string; detail: string }

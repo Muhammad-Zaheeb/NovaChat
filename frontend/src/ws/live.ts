@@ -5,12 +5,13 @@ import { displayName } from '../lib'
 import { notifyMessage } from '../notify'
 import { usersApi } from '../api'
 import { useFriends } from '../store/friends'
+import { startAvatarSync, useAvatars } from '../store/avatars'
 import { toast } from '../store/toast'
 import * as socket from './socket'
 
 /** Wires socket events into the stores. Returns a cleanup function. */
 export function startLive(): () => void {
-  const offs: Array<() => void> = []
+  const offs: Array<() => void> = [startAvatarSync()]
   const known = new Set<number>()
 
   // Ask the server who is online among people in my conversations (all of them
@@ -88,7 +89,10 @@ export function startLive(): () => void {
     socket.on('user.updated', (u) => {
       const me = useAuth.getState().user
       if (me?.id === u.id)
-        useAuth.setState({ user: { ...me, display_name: u.display_name, bio: u.bio } })
+        useAuth.setState({
+          user: { ...me, display_name: u.display_name, bio: u.bio, avatar_url: u.avatar_url },
+        })
+      useAvatars.getState().put([u])
       useChat.setState((s) => ({
         details: Object.fromEntries(
           Object.entries(s.details).map(([k, d]) => [
@@ -99,7 +103,12 @@ export function startLive(): () => void {
                 m.user.id === u.id
                   ? {
                       ...m,
-                      user: { ...m.user, display_name: u.display_name, bio: u.bio },
+                      user: {
+                        ...m.user,
+                        display_name: u.display_name,
+                        bio: u.bio,
+                        avatar_url: u.avatar_url,
+                      },
                     }
                   : m,
               ),

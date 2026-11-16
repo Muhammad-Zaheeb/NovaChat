@@ -4,6 +4,7 @@ import { usersApi, type UserPublic } from '../api'
 import { displayName } from '../lib'
 import { useAuth } from '../store/auth'
 import { useFriends } from '../store/friends'
+import { useAvatars } from '../store/avatars'
 import { Avatar, Input, Skeleton, Tag, cn } from './ui'
 
 function Identity({ u }: { u: UserPublic }) {
@@ -63,6 +64,7 @@ export default function UserPicker({
       try {
         const page = await usersApi.search(term)
         if (mine !== seq.current) return
+        useAvatars.getState().put(page.items)
         setResults(page.items.filter((u) => u.id !== me?.id))
         setHasMore(page.has_more)
         setSettled(term)
@@ -81,6 +83,7 @@ export default function UserPicker({
     try {
       const page = await usersApi.search(settled, results.length)
       if (mine !== seq.current) return
+      useAvatars.getState().put(page.items)
       setResults((r) => [...r, ...page.items.filter((u) => u.id !== me?.id)])
       setHasMore(page.has_more)
     } catch {

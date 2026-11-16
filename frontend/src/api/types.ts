@@ -4,6 +4,7 @@ export interface User {
   email: string
   display_name?: string | null
   bio?: string | null
+  avatar_url?: string | null
   last_seen_at?: string | null
 }
 export interface UserPublic {
@@ -11,6 +12,7 @@ export interface UserPublic {
   username: string
   display_name?: string | null
   bio?: string | null
+  avatar_url?: string | null
   last_seen_at?: string | null
   friendship_status?: FriendshipStatus
   mutual_friends_count?: number
