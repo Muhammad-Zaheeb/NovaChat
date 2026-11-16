@@ -9,5 +9,5 @@ export default function ProtectedRoute() {
         Loading…
       </div>
     )
-  return user ? <Outlet /> : <Navigate to="/login" replace />
+  return user ? <Outlet key={user.id} /> : <Navigate to="/login" replace />
 }

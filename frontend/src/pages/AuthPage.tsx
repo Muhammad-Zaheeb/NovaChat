@@ -139,6 +139,9 @@ export default function AuthPage({ mode }: { mode: 'login' | 'register' }) {
             {isRegister ? 'Sign in' : 'Create an account'}
           </Link>
         </p>
+        <p className="text-center text-xs text-slate-400 dark:text-slate-500">
+          To test two accounts, use a private window or another browser.
+        </p>
       </form>
     </div>
   )

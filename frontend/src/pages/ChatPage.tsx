@@ -173,6 +173,7 @@ export default function ChatPage({ view }: { view?: 'friends' }) {
     () => () => {
       reset()
       useFriends.getState().reset()
+      useLive.getState().reset()
     },
     [reset],
   )

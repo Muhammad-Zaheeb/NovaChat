@@ -12,6 +12,7 @@ interface LiveState {
   online: Record<number, boolean>
   setOnline: (m: Record<number, boolean>) => void
   setTyping: (conv: number, user: number, on: boolean) => void
+  reset: () => void
 }
 
 const timers = new Map<string, ReturnType<typeof setTimeout>>()
@@ -19,6 +20,11 @@ const timers = new Map<string, ReturnType<typeof setTimeout>>()
 export const useLive = create<LiveState>((set, get) => ({
   typing: {},
   online: {},
+  reset: () => {
+    timers.forEach(clearTimeout)
+    timers.clear()
+    set({ typing: {}, reads: {}, online: {} })
+  },
   setOnline: (m) => set((s) => ({ online: { ...s.online, ...m } })),
   reads: {},
   setRead: (conv, user, messageId) =>
