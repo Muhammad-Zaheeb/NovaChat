@@ -12,9 +12,11 @@ from app.models.conversation import (
     ConversationType,
     MemberRole,
 )
+from app.models.attachment import Attachment, AttachmentKind
 from app.models.message import Message, MessageReaction, MessageType
-from app.schemas.chat import MessageOut, ReactionOut, ReplyPreview
+from app.schemas.chat import AttachmentOut, MessageOut, ReactionOut, ReplyPreview
 from app.models.user import User
+from app.core.storage import get_storage
 from app.services import friends
 
 
@@ -214,7 +216,8 @@ async def remove_member(db: AsyncSession, me: User, conv_id: int, user_id: int) 
 
 
 async def send_message(
-    db: AsyncSession, me: User, conv_id: int, content: str, reply_to_id: int | None = None
+    db: AsyncSession, me: User, conv_id: int, content: str, reply_to_id: int | None = None,
+    attachment_ids: list[int] | None = None,
 ) -> Message:
     mine = await require_member(db, conv_id, me.id)
     if reply_to_id is not None:
@@ -223,12 +226,34 @@ async def send_message(
         )
         if ok is None:
             raise ChatError(404, "Replied-to message not found")
+    atts: list[Attachment] = []
+    if attachment_ids:
+        ids = list(dict.fromkeys(attachment_ids))
+        atts = list(
+            await db.scalars(
+                select(Attachment).where(
+                    Attachment.id.in_(ids),
+                    Attachment.uploader_id == me.id,
+                    Attachment.message_id.is_(None),
+                )
+            )
+        )
+        if len(atts) != len(ids):
+            raise ChatError(400, "Attachment not found or already used")
+        if any(a.duration is not None for a in atts) and len(atts) > 1:
+            raise ChatError(400, "A voice message cannot have other attachments")
+    mtype = MessageType.text
+    if atts:
+        voice = atts[0].kind == AttachmentKind.audio and atts[0].duration is not None
+        mtype = MessageType.voice if voice else MessageType.file
     msg = Message(
-        conversation_id=conv_id, sender_id=me.id, content=content, type=MessageType.text,
+        conversation_id=conv_id, sender_id=me.id, content=content.strip(), type=mtype,
         reply_to_id=reply_to_id,
     )
     db.add(msg)
     await db.flush()
+    for a in sorted(atts, key=lambda a: ids.index(a.id)):
+        a.message_id = msg.id
     mine.last_read_message_id = msg.id  # sender has implicitly read their own message
     await db.commit()
     await db.refresh(msg)
@@ -290,6 +315,15 @@ EDIT_WINDOW = timedelta(minutes=15)
 REACTIONS = ("👍", "❤️", "😂", "😮", "😢", "🙏")
 
 
+def attachment_out(a: Attachment) -> AttachmentOut:
+    base = f"/files/attachments/{a.id}"
+    return AttachmentOut(
+        id=a.id, kind=a.kind.value, mime=a.mime, size=a.size, original_name=a.original_name,
+        width=a.width, height=a.height, duration=a.duration, url=base,
+        thumb_url=f"{base}?thumb=1" if a.thumb_key else None,
+    )
+
+
 async def serialize(db: AsyncSession, msgs: list[Message]) -> list[MessageOut]:
     """MessageOut with reply preview and grouped reactions, using two batched queries."""
     if not msgs:
@@ -307,6 +341,11 @@ async def serialize(db: AsyncSession, msgs: list[Message]) -> list[MessageOut]:
     )
     for mid, emoji, uid in rows:
         grouped.setdefault(mid, {}).setdefault(emoji, []).append(uid)
+    att_by_msg: dict[int, list[AttachmentOut]] = {}
+    for a in await db.scalars(
+        select(Attachment).where(Attachment.message_id.in_(ids)).order_by(Attachment.id)
+    ):
+        att_by_msg.setdefault(a.message_id, []).append(attachment_out(a))
     out = []
     for m in msgs:
         deleted = m.deleted_at is not None
@@ -333,6 +372,7 @@ async def serialize(db: AsyncSession, msgs: list[Message]) -> list[MessageOut]:
                     ReactionOut(emoji=e, user_ids=u)
                     for e, u in ({} if deleted else grouped.get(m.id, {})).items()
                 ],
+                attachments=[] if deleted else att_by_msg.get(m.id, []),
             )
         )
     return out
@@ -370,7 +410,17 @@ async def delete_message(db: AsyncSession, me: User, conv_id: int, msg_id: int) 
     if msg.deleted_at is None:
         msg.deleted_at = datetime.now(timezone.utc)
         await db.execute(delete(MessageReaction).where(MessageReaction.message_id == msg.id))
+        atts = list(await db.scalars(select(Attachment).where(Attachment.message_id == msg.id)))
+        await db.execute(delete(Attachment).where(Attachment.message_id == msg.id))
         await db.commit()
+        storage = get_storage()
+        for a in atts:  # files go once the row is gone; a failure only leaves an orphan blob
+            for key in (a.storage_key, a.thumb_key):
+                if key:
+                    try:
+                        await storage.delete(key)
+                    except Exception:
+                        pass
         await db.refresh(msg)
     return msg
 

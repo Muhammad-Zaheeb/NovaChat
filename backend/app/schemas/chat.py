@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.conversation import ConversationType, MemberRole
 from app.models.message import MessageType
@@ -21,8 +21,15 @@ class MemberAdd(BaseModel):
 
 
 class MessageCreate(BaseModel):
-    content: str = Field(min_length=1, max_length=4000)
+    content: str = Field(default="", max_length=4000)  # caption when attachments are present
     reply_to_id: int | None = None
+    attachment_ids: list[int] = Field(default_factory=list, max_length=10)
+
+    @model_validator(mode="after")
+    def _not_empty(self):
+        if not self.content.strip() and not self.attachment_ids:
+            raise ValueError("Message cannot be empty")
+        return self
 
 
 class MessageEdit(BaseModel):
@@ -65,6 +72,19 @@ class ReactionOut(BaseModel):
     user_ids: list[int]
 
 
+class AttachmentOut(BaseModel):
+    id: int
+    kind: str
+    mime: str
+    size: int
+    original_name: str
+    width: int | None = None
+    height: int | None = None
+    duration: float | None = None
+    url: str
+    thumb_url: str | None = None
+
+
 class MessageOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -78,6 +98,7 @@ class MessageOut(BaseModel):
     deleted: bool = False
     reply_to: ReplyPreview | None = None
     reactions: list[ReactionOut] = Field(default_factory=list)
+    attachments: list[AttachmentOut] = Field(default_factory=list)
 
 
 class ConversationOut(BaseModel):

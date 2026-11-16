@@ -3,6 +3,7 @@ Used by both the REST routers and the WebSocket handlers so they behave identica
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.message import Message
+from app.schemas.user import avatar_url_for
 from app.services import chat
 from app.ws import events
 from app.ws.manager import manager
@@ -30,6 +31,7 @@ async def publish_user_updated(db: AsyncSession, user) -> None:
         "username": user.username,
         "display_name": user.display_name,
         "bio": user.bio,
+        "avatar_url": avatar_url_for(user.id, user.avatar_key),
     }
     targets = set(await chat.peer_ids(db, user.id)) | {user.id}
     from app.services import friends

@@ -153,7 +153,7 @@ async def test_members_do_not_expose_email(users):
     conv = await dm(users)
     detail = (await users["bob"].get(f"/conversations/{conv}")).json()
     for m in detail["members"]:
-        assert set(m["user"]) == {"id", "username", "display_name", "bio", "last_seen_at"}
+        assert set(m["user"]) == {"id", "username", "display_name", "bio", "last_seen_at", "avatar_url"}
     group = await users["alice"].post(
         "/conversations/group", json={"name": "g", "member_ids": [users["bob"].user_id]}
     )

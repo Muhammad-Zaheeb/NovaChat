@@ -11,6 +11,7 @@ backend/.mypy_cache/
 # Environment Variables
 # ==========================
 backend/.env
+backend/uploads/
 
 # ==========================
 # Node

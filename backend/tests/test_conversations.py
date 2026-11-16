@@ -92,7 +92,7 @@ async def test_user_search(users):
     assert r.json()["items"] == []  # excludes self
     r = await a.get("/users/search?q=ob")
     assert [u["username"] for u in r.json()["items"]] == ["bob"]
-    assert set(r.json()["items"][0]) == {"id", "username", "display_name", "bio", "friendship_status", "mutual_friends_count"}  # no email leak
+    assert set(r.json()["items"][0]) == {"id", "username", "display_name", "bio", "friendship_status", "mutual_friends_count", "avatar_url"}  # no email leak
     assert (await a.get("/users/search?q=b")).status_code == 422  # too short
     assert (await a.get("/users/search?q=bo&limit=51")).status_code == 422
     assert (await a.get("/users/search?q=%25%25")).json()["items"] == []  # wildcard is escaped

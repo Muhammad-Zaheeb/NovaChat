@@ -29,7 +29,7 @@ async def search_users(
     return UserSearchPage(
         items=[
             UserSearchResult(
-                id=u.id, username=u.username, display_name=u.display_name, bio=u.bio,
+                id=u.id, avatar_key=u.avatar_key, username=u.username, display_name=u.display_name, bio=u.bio,
                 friendship_status=st.get(u.id, "none"), mutual_friends_count=mutual.get(u.id, 0),
             )
             for u in found

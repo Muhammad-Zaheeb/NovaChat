@@ -34,8 +34,20 @@ async def _clean():
     yield
     async with engine.begin() as conn:
         await conn.execute(
-            text("TRUNCATE users, email_verification_codes, friendships, conversations, conversation_members, messages RESTART IDENTITY CASCADE")
+            text("TRUNCATE users, email_verification_codes, friendships, conversations, conversation_members, messages, attachments RESTART IDENTITY CASCADE")
         )
+
+
+@pytest.fixture(autouse=True)
+def _storage(tmp_path):
+    from pathlib import Path
+    from app.core import ratelimit
+    from app.core.storage import LocalStorage, set_storage
+
+    ratelimit.reset()
+    set_storage(LocalStorage(Path(tmp_path) / "uploads"))
+    yield
+    set_storage(None)
 
 
 def make_client() -> AsyncClient:

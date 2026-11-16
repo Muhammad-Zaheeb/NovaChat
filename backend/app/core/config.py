@@ -18,5 +18,16 @@ class Settings(BaseSettings):
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
 
+    # File storage: "local" (dev, files under UPLOAD_DIR) or "s3" (S3-compatible, e.g. Cloudflare R2)
+    STORAGE_BACKEND: str = "local"
+    UPLOAD_DIR: str = "uploads"  # relative to the backend directory
+    S3_ENDPOINT_URL: str = ""
+    S3_BUCKET: str = ""
+    S3_ACCESS_KEY_ID: str = ""
+    S3_SECRET_ACCESS_KEY: str = ""
+    S3_REGION: str = "auto"
+    S3_PUBLIC_BASE_URL: str = ""  # optional: serve avatars straight from a public bucket/CDN
+    UPLOADS_PER_MINUTE: int = 30
+
 
 settings = Settings()

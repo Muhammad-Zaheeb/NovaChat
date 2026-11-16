@@ -78,7 +78,7 @@ async def list_friends(db: AsyncSession = Depends(get_db), me: User = Depends(ge
     users = await friends.friends_of(db, me)
     online = await manager.filter_online({u.id for u in users})
     return [FriendOut(
-            id=u.id, username=u.username, display_name=u.display_name, bio=u.bio,
+            id=u.id, avatar_key=u.avatar_key, username=u.username, display_name=u.display_name, bio=u.bio,
             last_seen_at=u.last_seen_at, online=u.id in online,
         ) for u in users]
 

@@ -109,7 +109,7 @@ async def send_message(
     conv_id: int, data: MessageCreate, db: AsyncSession = Depends(get_db),
     me: User = Depends(get_current_user),
 ):
-    msg = await _call(chat.send_message(db, me, conv_id, data.content, data.reply_to_id))
+    msg = await _call(chat.send_message(db, me, conv_id, data.content, data.reply_to_id, data.attachment_ids))
     await notify.publish_message(db, msg)
     return (await chat.serialize(db, [msg]))[0]
 
