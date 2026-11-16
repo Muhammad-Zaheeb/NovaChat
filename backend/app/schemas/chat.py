@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.conversation import ConversationType, MemberRole
 from app.models.message import MessageType
-from app.schemas.user import UserOut
+from app.schemas.user import UserPublic
 
 
 class DirectCreate(BaseModel):
@@ -48,7 +48,7 @@ class ReadState(BaseModel):
 class MemberOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    user: UserOut
+    user: UserPublic
     role: MemberRole
     joined_at: datetime
 

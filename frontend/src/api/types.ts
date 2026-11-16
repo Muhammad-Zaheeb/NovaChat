@@ -41,7 +41,7 @@ export interface Reaction {
 }
 export const REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏']
 export interface Member {
-  user: User
+  user: UserPublic
   role: MemberRole
   joined_at: string
 }

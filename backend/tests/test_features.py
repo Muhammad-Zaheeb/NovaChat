@@ -147,3 +147,18 @@ async def test_mute_event_only_to_self(ws_url, users):  # noqa: F811
         await users["bob"].put(f"/conversations/{conv}/mute", json={"muted": True})
         ev = await recv(b)
         assert ev == {"type": "conversation.muted", "payload": {"conversation_id": conv, "muted": True}}
+
+
+async def test_members_do_not_expose_email(users):
+    conv = await dm(users)
+    detail = (await users["bob"].get(f"/conversations/{conv}")).json()
+    for m in detail["members"]:
+        assert set(m["user"]) == {"id", "username", "display_name", "bio", "last_seen_at"}
+    group = await users["alice"].post(
+        "/conversations/group", json={"name": "g", "member_ids": [users["bob"].user_id]}
+    )
+    assert group.status_code in (200, 201), group.text
+    gd = (await users["bob"].get(f"/conversations/{group.json()['id']}")).json()
+    assert all("email" not in m["user"] for m in gd["members"])
+    # your own email is still available to you
+    assert "email" in (await users["bob"].get("/auth/me")).json()
