@@ -19,7 +19,7 @@ async def test_reply(users):
     conv = await dm(users)
     m1 = await say(users["alice"], conv, "hello there")
     m2 = await say(users["bob"], conv, "hi", reply_to_id=m1["id"])
-    assert m2["reply_to"] == {"id": m1["id"], "sender_id": users["alice"].user_id, "content": "hello there", "deleted": False}
+    assert m2["reply_to"] == {"id": m1["id"], "sender_id": users["alice"].user_id, "content": "hello there", "deleted": False, "attachments": []}
     listed = (await users["alice"].get(f"/conversations/{conv}/messages")).json()
     assert listed[0]["reply_to"]["id"] == m1["id"]
     # reply target from another conversation / missing is rejected

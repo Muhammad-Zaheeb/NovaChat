@@ -212,7 +212,7 @@ export default function ConversationView({ id }: { id: number }) {
         isGroup={conv.type === 'group'}
         names={names}
       />
-      <Composer convId={id} title={title} />
+      <Composer key={id} convId={id} title={title} />
     </>
   )
 }

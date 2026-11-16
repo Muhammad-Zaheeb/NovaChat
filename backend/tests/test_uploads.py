@@ -221,3 +221,13 @@ async def test_avatar_and_attachment_message_broadcast(ws_url, users):
             if ev["type"] == "message.new":
                 break
         assert ev["payload"]["attachments"][0]["id"] == att["id"]
+
+
+async def test_reply_preview_carries_attachment(users):
+    cid = await dm(users)
+    att = (await upload(users["alice"], png(), "p.png")).json()
+    m = (await users["alice"].post(f"/conversations/{cid}/messages", json={"attachment_ids": [att["id"]]})).json()
+    r = await users["bob"].post(f"/conversations/{cid}/messages", json={"content": "nice", "reply_to_id": m["id"]})
+    assert r.json()["reply_to"]["attachments"][0]["kind"] == "image"
+    lst = (await users["bob"].get("/conversations")).json()
+    assert lst[0]["last_message"]["content"] == "nice"

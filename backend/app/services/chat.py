@@ -343,7 +343,7 @@ async def serialize(db: AsyncSession, msgs: list[Message]) -> list[MessageOut]:
         grouped.setdefault(mid, {}).setdefault(emoji, []).append(uid)
     att_by_msg: dict[int, list[AttachmentOut]] = {}
     for a in await db.scalars(
-        select(Attachment).where(Attachment.message_id.in_(ids)).order_by(Attachment.id)
+        select(Attachment).where(Attachment.message_id.in_(set(ids) | reply_ids)).order_by(Attachment.id)
     ):
         att_by_msg.setdefault(a.message_id, []).append(attachment_out(a))
     out = []
@@ -365,6 +365,7 @@ async def serialize(db: AsyncSession, msgs: list[Message]) -> list[MessageOut]:
                     sender_id=r.sender_id,
                     content="" if r.deleted_at else r.content[:140],
                     deleted=r.deleted_at is not None,
+                    attachments=[] if r.deleted_at else att_by_msg.get(r.id, [])[:1],
                 )
                 if r
                 else None,

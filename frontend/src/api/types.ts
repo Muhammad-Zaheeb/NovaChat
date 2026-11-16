@@ -31,12 +31,26 @@ export interface Message {
   deleted?: boolean
   reply_to?: ReplyPreview | null
   reactions?: Reaction[]
+  attachments?: Attachment[]
+}
+export interface Attachment {
+  id: number
+  kind: 'image' | 'video' | 'audio' | 'file'
+  mime: string
+  size: number
+  original_name: string
+  width?: number | null
+  height?: number | null
+  duration?: number | null
+  url: string
+  thumb_url?: string | null
 }
 export interface ReplyPreview {
   id: number
   sender_id: number
   content: string
   deleted: boolean
+  attachments?: Attachment[]
 }
 export interface Reaction {
   emoji: string

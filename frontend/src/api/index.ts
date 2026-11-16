@@ -1,5 +1,6 @@
 import { api } from './client'
 import type {
+  Attachment,
   Friend,
   FriendRequest,
   Conversation,
@@ -63,9 +64,13 @@ export const chatApi = {
     api
       .get<Message[]>(`/conversations/${id}/messages`, { params: { before, limit } })
       .then((r) => r.data),
-  send: (id: number, content: string, reply_to_id?: number) =>
+  send: (id: number, content: string, reply_to_id?: number, attachment_ids?: number[]) =>
     api
-      .post<Message>(`/conversations/${id}/messages`, { content, reply_to_id })
+      .post<Message>(`/conversations/${id}/messages`, {
+        content,
+        reply_to_id,
+        attachment_ids,
+      })
       .then((r) => r.data),
   edit: (id: number, mid: number, content: string) =>
     api
@@ -99,4 +104,30 @@ export const friendsApi = {
   decline: (id: number) => api.post(`/friends/requests/${id}/decline`),
   cancel: (id: number) => api.delete(`/friends/requests/${id}`),
   unfriend: (user_id: number) => api.delete(`/friends/${user_id}`),
+}
+
+export const filesApi = {
+  upload: (
+    file: Blob,
+    name: string,
+    opts: {
+      voice?: boolean
+      duration?: number
+      onProgress?: (fraction: number) => void
+      signal?: AbortSignal
+    } = {},
+  ) => {
+    const f = new FormData()
+    if (opts.voice) {
+      f.append('voice', 'true')
+      f.append('duration', String(opts.duration ?? 0))
+    }
+    f.append('file', file, name)
+    return api
+      .post<Attachment>('/attachments', f, {
+        signal: opts.signal,
+        onUploadProgress: (e) => opts.onProgress?.(e.total ? e.loaded / e.total : 0),
+      })
+      .then((r) => r.data)
+  },
 }

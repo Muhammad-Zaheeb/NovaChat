@@ -54,7 +54,12 @@ interface ChatState {
   removeConversation: (id: number) => void
   openConversation: (id: number) => Promise<void>
   loadOlder: (id: number) => Promise<number>
-  send: (id: number, content: string) => Promise<void>
+  send: (
+    id: number,
+    content: string,
+    replyToId?: number,
+    attachmentIds?: number[],
+  ) => Promise<void>
   /** Optimistic send over the socket (REST fallback when it is down). */
   sendLive: (id: number, content: string, retryOf?: string, replyToId?: number) => void
   dropPending: (id: number, clientId: string) => void
@@ -207,8 +212,8 @@ export const useChat = create<ChatState>((set, get) => ({
     return older.length
   },
 
-  send: async (id, content) => {
-    const m = await chatApi.send(id, content)
+  send: async (id, content, replyToId, attachmentIds) => {
+    const m = await chatApi.send(id, content, replyToId, attachmentIds)
     get().receiveMessage(m, { own: true, active: true })
   },
 

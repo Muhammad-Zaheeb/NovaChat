@@ -1,7 +1,7 @@
 import { useAuth } from '../store/auth'
 import { useLive } from '../store/live'
 import { isAttentive, useChat } from '../store/chat'
-import { displayName } from '../lib'
+import { displayName, messagePreview } from '../lib'
 import { notifyMessage } from '../notify'
 import { usersApi } from '../api'
 import { useFriends } from '../store/friends'
@@ -66,7 +66,7 @@ export function startLive(): () => void {
         const who = sender ? displayName(sender.user) : 'New message'
         notifyMessage(
           c.type === 'group' ? `${who} in ${c.name ?? 'group'}` : who,
-          m.content,
+          messagePreview(m),
           () => {
             window.location.assign(`/c/${c.id}`)
           },

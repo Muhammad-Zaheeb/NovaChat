@@ -14,7 +14,8 @@ import {
   Trash2,
 } from 'lucide-react'
 import { chatApi, errorMessage, REACTIONS, type Message } from '../../api'
-import { EDIT_MS, clockTime, dayLabel } from '../../lib'
+import MessageMedia from './MessageMedia'
+import { EDIT_MS, clockTime, dayLabel, messagePreview } from '../../lib'
 import { useChat } from '../../store/chat'
 import { useLive } from '../../store/live'
 import { toast } from '../../store/toast'
@@ -229,7 +230,9 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
         </Divider>,
       )
     const deleted = !!m.deleted
-    const canEdit = mine && !deleted && now - new Date(m.created_at).getTime() < EDIT_MS
+    const hasMedia = !!m.attachments?.length
+    const canEdit =
+      mine && !deleted && !hasMedia && now - new Date(m.created_at).getTime() < EDIT_MS
     const isNew = baseline !== null && m.id > baseline
     const showAvatar = isGroup && !mine
     const actions = [
@@ -314,7 +317,7 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
                       : (names[m.reply_to.sender_id] ?? 'Former member')}
                   </span>
                   <span className="block truncate opacity-90">
-                    {m.reply_to.deleted ? 'Message deleted' : m.reply_to.content}
+                    {messagePreview(m.reply_to)}
                   </span>
                 </button>
               )}
@@ -323,7 +326,14 @@ export default function MessageList({ convId, meId, isGroup, names }: Props) {
                   <Ban size={14} aria-hidden /> Message deleted
                 </span>
               ) : (
-                <Linkify text={m.content} />
+                <>
+                  {hasMedia && <MessageMedia attachments={m.attachments!} mine={mine} />}
+                  {m.content && (
+                    <div className={cn(hasMedia && 'mt-1.5')}>
+                      <Linkify text={m.content} />
+                    </div>
+                  )}
+                </>
               )}
             </div>
             {!deleted && (

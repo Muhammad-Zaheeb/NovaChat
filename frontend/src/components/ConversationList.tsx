@@ -9,7 +9,7 @@ import {
   Users,
 } from 'lucide-react'
 import type { Conversation } from '../api'
-import { displayName, formatTime } from '../lib'
+import { displayName, formatTime, messagePreview } from '../lib'
 import { useAuth } from '../store/auth'
 import { conversationTitle, useChat } from '../store/chat'
 import { useFriends } from '../store/friends'
@@ -64,7 +64,7 @@ function Row({ c, meId }: { c: Conversation; meId: number }) {
         ? 'You: '
         : c.type === 'group' && names[last.sender_id]
           ? `${names[last.sender_id]}: `
-          : '') + (last.deleted ? 'Message deleted' : last.content)
+          : '') + messagePreview(last)
     : 'No messages yet'
   return (
     <li>

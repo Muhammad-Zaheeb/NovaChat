@@ -65,6 +65,7 @@ class ReplyPreview(BaseModel):
     sender_id: int
     content: str
     deleted: bool = False
+    attachments: list["AttachmentOut"] = Field(default_factory=list)  # first one only
 
 
 class ReactionOut(BaseModel):
