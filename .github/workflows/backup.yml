@@ -1,0 +1,67 @@
+name: Database backup
+
+# Daily pg_dump -> gzip -> PRIVATE storage bucket under backups/ (keeps the newest 14).
+# Dumps are never uploaded as workflow artifacts or committed: this repo is public.
+# Needs repository secrets: BACKUP_DATABASE_URL, S3_ENDPOINT_URL, S3_BUCKET,
+# S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_REGION. Without them the job skips cleanly.
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+      S3_ENDPOINT_URL: ${{ secrets.S3_ENDPOINT_URL }}
+      S3_BUCKET: ${{ secrets.S3_BUCKET }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ secrets.S3_REGION }}
+    steps:
+      - name: Check secrets
+        id: check
+        run: |
+          missing=""
+          for v in DATABASE_URL S3_ENDPOINT_URL S3_BUCKET AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY; do
+            [ -n "${!v}" ] || missing="$missing $v"
+          done
+          if [ -n "$missing" ]; then
+            echo "Backup secrets not set (missing:$missing); skipping."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install a recent pg_dump
+        if: steps.check.outputs.run == 'true'
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+
+      - name: Dump, compress, upload, prune
+        if: steps.check.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          # Accept the SQLAlchemy-style URL too.
+          url="${DATABASE_URL/postgresql+asyncpg:/postgresql:}"
+          url="${url/postgres+asyncpg:/postgresql:}"
+          file="novachat-$(date -u +%Y%m%dT%H%M%SZ).sql.gz"
+          /usr/lib/postgresql/17/bin/pg_dump --no-owner --no-privileges "$url" | gzip -9 > "$file"
+          [ "$(stat -c %s "$file")" -gt 200 ] || { echo "Dump suspiciously small"; exit 1; }
+          aws s3 cp "$file" "s3://$S3_BUCKET/backups/$file" --endpoint-url "$S3_ENDPOINT_URL" --no-progress
+          rm -f "$file"
+          # Keep the newest 14 (names sort by timestamp).
+          aws s3 ls "s3://$S3_BUCKET/backups/" --endpoint-url "$S3_ENDPOINT_URL" \
+            | awk '{print $4}' | grep '^novachat-.*\.sql\.gz$' | sort | head -n -14 \
+            | while read -r old; do
+                echo "Pruning $old"
+                aws s3 rm "s3://$S3_BUCKET/backups/$old" --endpoint-url "$S3_ENDPOINT_URL"
+              done
