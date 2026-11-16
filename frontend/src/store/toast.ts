@@ -2,8 +2,9 @@ import { create } from 'zustand'
 
 export interface Toast {
   id: number
-  kind: 'error' | 'info'
+  kind: 'error' | 'info' | 'success'
   text: string
+  action?: { label: string; onClick: () => void }
 }
 
 interface ToastState {
@@ -18,10 +19,10 @@ export const useToasts = create<ToastState>((set) => ({
 }))
 
 /** Show a toast; identical text already on screen is not duplicated. */
-export function toast(text: string, kind: Toast['kind'] = 'error') {
+export function toast(text: string, kind: Toast['kind'] = 'error', action?: Toast['action']) {
   const { toasts, dismiss } = useToasts.getState()
   if (toasts.some((t) => t.text === text)) return
   const id = nextId++
-  useToasts.setState({ toasts: [...toasts, { id, kind, text }].slice(-3) })
-  setTimeout(() => dismiss(id), 5000)
+  useToasts.setState({ toasts: [...toasts, { id, kind, text, action }].slice(-3) })
+  setTimeout(() => dismiss(id), action ? 7000 : 5000)
 }

@@ -19,28 +19,7 @@ import { typingText, useLive } from '../store/live'
 import { startLive } from '../ws/live'
 import { useConn } from '../ws/socket'
 import { toast } from '../store/toast'
-
-function useTheme() {
-  const [theme, setTheme] = useState(() => {
-    try {
-      return (
-        localStorage.getItem('theme') ??
-        (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-      )
-    } catch {
-      return 'light'
-    }
-  })
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark')
-    try {
-      localStorage.setItem('theme', theme)
-    } catch {
-      /* ignore */
-    }
-  }, [theme])
-  return { theme, toggle: () => setTheme((t) => (t === 'dark' ? 'light' : 'dark')) }
-}
+import { useTheme } from '../store/theme'
 
 function Conversation({ id }: { id: number }) {
   const me = useAuth((s) => s.user)!
@@ -203,7 +182,9 @@ function Conversation({ id }: { id: number }) {
 
 export default function ChatPage({ view }: { view?: 'friends' | 'profile' }) {
   const { id } = useParams()
-  const { theme, toggle } = useTheme()
+  const theme = useTheme((s) => s.resolved)
+  const setPref = useTheme((s) => s.setPref)
+  const toggle = () => setPref(theme === 'dark' ? 'light' : 'dark')
   const reset = useChat((s) => s.reset)
   useEffect(
     () => () => {

@@ -1,0 +1,95 @@
+/*
+ * NovaChat design tokens
+ * ----------------------
+ * Palette: warm "stone" neutrals with ONE accent, a deep teal, used only for
+ * primary actions, selection, unread counts and focus. Status colours (danger,
+ * success, warning) appear only where they carry meaning.
+ * Type: Inter Variable (self-hosted), Tailwind's scale 12/14/16/18/20/24/30,
+ * tabular numbers for times and counts.
+ * Space: 4/8 pt grid (Tailwind spacing). Radii: 6 (controls) / 8 (cards,
+ * bubbles) / 10 (dialogs) and full for avatars and pills.
+ * Depth: hairline borders first, shadows only for floating layers.
+ * Dark theme uses layered surfaces (bg < surface < surface-2 < surface-3)
+ * rather than an inverted light theme; the accent shifts lighter for text.
+ * Motion: short, eased, and switched off by prefers-reduced-motion.
+ * Components read these through the Tailwind theme (bg-surface, text-muted,
+ * border-line, bg-accent, ...), never raw hex values.
+ */
+:root {
+  color-scheme: light;
+  --bg: #f7f6f4;
+  --surface: #ffffff;
+  --surface-2: #f3f2ef;
+  --surface-3: #e8e6e2;
+  --line: #e5e3df;
+  --line-strong: #d3d0ca;
+  --fg: #1c1917;
+  --fg-muted: #57534e;
+  --fg-subtle: #706a64;
+  --accent: #0f6b63;
+  --accent-hover: #0b5852;
+  --accent-fg: #ffffff;
+  --accent-text: #0d6159;
+  --accent-soft: #e3f0ee;
+  --danger: #b42318;
+  --danger-hover: #912018;
+  --danger-soft: #fdeceb;
+  --success: #157f3c;
+  --warning: #a15c07;
+  --warning-soft: #fdf3e2;
+  --highlight: #fbe7a3;
+  --bubble-in: #ffffff;
+  --bubble-out: #0f6b63;
+  --bubble-out-fg: #ffffff;
+  --overlay: rgb(28 25 23 / 0.4);
+  --ring: #0f6b63;
+
+  --elev-1: 0 1px 2px rgb(28 25 23 / 0.06);
+  --elev-2: 0 4px 12px -2px rgb(28 25 23 / 0.1), 0 1px 3px rgb(28 25 23 / 0.06);
+  --elev-3: 0 16px 40px -8px rgb(28 25 23 / 0.2), 0 2px 6px rgb(28 25 23 / 0.06);
+
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur: 200ms;
+}
+
+.dark {
+  color-scheme: dark;
+  --bg: #0e0d0c;
+  --surface: #171614;
+  --surface-2: #201f1c;
+  --surface-3: #2b2926;
+  --line: #2b2926;
+  --line-strong: #3b3834;
+  --fg: #f2f1ee;
+  --fg-muted: #b0aaa3;
+  --fg-subtle: #8f8881;
+  --accent: #14796f;
+  --accent-hover: #188a7f;
+  --accent-fg: #ffffff;
+  --accent-text: #6fd3c4;
+  --accent-soft: rgb(111 211 196 / 0.12);
+  --danger: #e5484d;
+  --danger-hover: #f16a6e;
+  --danger-soft: rgb(229 72 77 / 0.14);
+  --success: #4cc38a;
+  --warning: #f0b45a;
+  --warning-soft: rgb(240 180 90 / 0.12);
+  --highlight: rgb(240 180 90 / 0.3);
+  --bubble-in: #201f1c;
+  --bubble-out: #14796f;
+  --bubble-out-fg: #ffffff;
+  --overlay: rgb(0 0 0 / 0.6);
+  --ring: #6fd3c4;
+
+  --elev-1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --elev-2: 0 6px 16px -4px rgb(0 0 0 / 0.6), 0 0 0 1px var(--line);
+  --elev-3: 0 20px 48px -12px rgb(0 0 0 / 0.7), 0 0 0 1px var(--line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0.01ms;
+    --dur: 0.01ms;
+  }
+}
