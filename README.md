@@ -2,53 +2,57 @@
 
 [![CI](https://github.com/Muhammad-Zaheeb/NovaChat/actions/workflows/ci.yml/badge.svg)](https://github.com/Muhammad-Zaheeb/NovaChat/actions/workflows/ci.yml)
 
-A production-ready real-time messaging platform built with React, FastAPI, PostgreSQL, SQLAlchemy, JWT Authentication, and WebSockets.
+A real-time messaging app with friend requests, group chats, media sharing and voice messages, built with **React + TypeScript** on the frontend and **FastAPI + PostgreSQL** on the backend, connected over **WebSockets**.
+
+> 🌐 **Live demo:** coming soon
 
 ---
 
-## 🚀 Tech Stack
+## ✨ Features
 
-### Frontend
+**Messaging**
+- Real-time one-to-one and group chats over WebSockets
+- Typing indicators, read receipts ("Seen" / "Seen by N") and online presence with last seen
+- Replies with quotes, editing (within 15 minutes), deleting and emoji reactions
+- Search inside a conversation, unread counts and a "New messages" divider
+- Optimistic sending with retry, plus automatic reconnect and resync
 
-- React
-- TypeScript
-- Vite
-- Zustand
-- React Router
-- Axios
+**Media**
+- Photo, video and file sharing with drag-and-drop, paste, upload progress and a full-screen viewer
+- Voice messages with recording, preview and a waveform player
+- Profile pictures with a crop step
 
-### Backend
+**People**
+- Friend requests: you can only message, or add to a group, people who have accepted
+- Group admins can add and remove members, and members can leave
+- Search by display name or username, with mutual friends to tell people apart
 
-- FastAPI
-- PostgreSQL
-- SQLAlchemy 2.0
-- Alembic
-- JWT
-- WebSockets
+**Accounts & security**
+- Email verification and password reset with 6-digit codes
+- Rate limiting on login and other auth endpoints
+- Cookie-based JWT sessions that stay in sync across tabs
+- Uploads checked by their real file type, photo location data (EXIF) removed, and downloads limited to chat members
+- Security headers (CSP, HSTS and more) in production
 
----
-
-## Features
-
-- User Authentication (email verification, multi-tab safe)
-- Friend requests (DMs and group adds are friends-only)
-- Replies, message edit (15 min) and delete, emoji reactions
-- In-conversation message search, unread divider
-- Profiles (display name, bio, avatar colour, last seen)
-- Browser notifications + sound, per-conversation mute
-- Real-time Messaging
-- Group Chats
-- Typing Indicators
-- Read Receipts
-- Online Presence
-- File Sharing
-- Voice Messages
+**Experience**
+- Light, dark and system themes
+- Layouts for phone and desktop
+- Ctrl/⌘ + K quick switcher and keyboard shortcuts
+- Browser notifications with sound, and mute per conversation
 
 ---
 
-## Status
+## 🧱 Tech stack
 
-🚧 Under Development
+| Layer | Tools |
+|---|---|
+| **Frontend** | React, TypeScript, Vite, Tailwind CSS, Zustand, React Router, Axios, lucide icons |
+| **Backend** | FastAPI, SQLAlchemy 2.0 (async), Alembic, PostgreSQL, asyncpg, PyJWT, bcrypt, Pillow |
+| **Real-time** | WebSockets (one connection per tab, auth by cookie) |
+| **Storage** | Local disk in development, S3-compatible storage in production |
+| **Quality** | pytest (94 tests), ESLint, GitHub Actions CI, optional Sentry |
+| **Deploy** | Docker / Render, Neon Postgres, Supabase Storage, Brevo email, all on free tiers |
+
 ---
 
 ## Run locally (backend)
