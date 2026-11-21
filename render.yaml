@@ -20,13 +20,9 @@ services:
         sync: false
       - key: CORS_ORIGINS        # JSON list, e.g. ["https://novachat.onrender.com"]
         sync: false
-      - key: EMAIL_BACKEND       # smtp | brevo
-        value: smtp
-      - key: EMAIL_FROM
-        sync: false
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASSWORD
+      - key: EMAIL_BACKEND       # brevo: Render's free plan blocks outbound SMTP, so Gmail can't send from here
+        value: brevo
+      - key: EMAIL_FROM          # e.g. NovaChat <your-verified-brevo-sender@gmail.com>
         sync: false
       - key: BREVO_API_KEY
         sync: false
