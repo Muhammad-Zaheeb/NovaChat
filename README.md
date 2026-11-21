@@ -4,7 +4,7 @@
 
 A real-time messaging app with friend requests, group chats, media sharing and voice messages, built with **React + TypeScript** on the frontend and **FastAPI + PostgreSQL** on the backend, connected over **WebSockets**.
 
-> 🌐 **Live demo:** coming soon
+> 🌐 **Live demo:** <https://novachat-v022.onrender.com> (free hosting: the first visit after idle takes about a minute to wake up)
 
 ---
 
